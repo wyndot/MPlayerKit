@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "mplayer-app-store-icon.png",
+      "idiom" : "tv"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
