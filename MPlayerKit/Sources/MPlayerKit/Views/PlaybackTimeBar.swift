@@ -24,7 +24,7 @@ struct PlaybackTimeBar: View {
                     playerModel.seek(newTime)
                 }
             })
-            .onReceive(playerModel.$currentTime, perform: { newValue in
+            .onReceive(playerModel.$currentTime.receive(on: DispatchQueue.main), perform: { newValue in
                 guard let duration = playerModel.duration, let currentTime = playerModel.currentTime, case .playing = playerModel.state else { return }
                 progress = currentTime.seconds / duration.seconds
             })

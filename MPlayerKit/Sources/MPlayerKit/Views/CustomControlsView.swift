@@ -12,6 +12,18 @@ import AVFoundation
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
 struct CustomControlsView: View {
+#if os(tvOS)
+    enum ControlsFocusState: Hashable {
+        case close
+        case play
+        case track
+        case skipForward
+        case skipBackward
+        case options
+    }
+    @Namespace private var controlsNamespace
+    @FocusState private var focusState: ControlsFocusState?
+#endif
     @Environment(\.playerModel) private var playerModel
     @Environment(\.safeAreaInsets) private var safeAreaInsets
     @State private var presentation: PlayerPresentation = .none
@@ -38,38 +50,51 @@ struct CustomControlsView: View {
     }
     
     var content: some View {
-        ZStack(alignment: .center) {
-            Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
-            VStack {
+        GeometryReader { geometry in
+            ZStack(alignment: .center) {
+                Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
                 topbar
-                Spacer()
+                    .alignmentGuide(VerticalAlignment.center, computeValue: { d in
+                        d[.top] + geometry.size.height / 2.0 - safeAreaInsets.top
+                    })
+                
                 middlebar
-                Spacer()
+                    .alignmentGuide(VerticalAlignment.center, computeValue: { d in
+                        d[VerticalAlignment.center]
+                    })
+                
                 VStack(alignment: .center, spacing: 0) {
                     playbackInfoBar
                     bottombar
                 }
+                .alignmentGuide(VerticalAlignment.center, computeValue: { d in
+                    d[.bottom] - geometry.size.height / 2.0 + safeAreaInsets.bottom
+                })
             }
-            .padding(.top, safeAreaInsets.top)
-            .padding(.bottom, safeAreaInsets.bottom)
-            .padding(.horizontal, 40)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onReceive(playerModel.$presentation, perform: { newValue in
+#if os(tvOS)
+        .focusScope(controlsNamespace)
+        .onAppear {
+            focusState = .play
+        }
+#endif
+        .onReceive(playerModel.$presentation.receive(on: DispatchQueue.main), perform: { newValue in
             presentation = newValue
         })
-        .onReceive(playerModel.$state, perform: { newValue in
+        .onReceive(playerModel.$state.receive(on: DispatchQueue.main), perform: { newValue in
             playerState = newValue
         })
-        .onReceive(playerModel.$subtitles, perform: { newValue in
+        .onReceive(playerModel.$subtitles.receive(on: DispatchQueue.main), perform: { newValue in
             subtitles = newValue?.options
         })
-        .onReceive(playerModel.$audios, perform: { newValue in
+        .onReceive(playerModel.$audios.receive(on: DispatchQueue.main), perform: { newValue in
             audios = newValue?.options
         })
-        .onReceive(playerModel.$subtitle, perform: { newValue in
+        .onReceive(playerModel.$subtitle.receive(on: DispatchQueue.main), perform: { newValue in
             subtitle = newValue
         })
-        .onReceive(playerModel.$audio, perform: { newValue in
+        .onReceive(playerModel.$audio.receive(on: DispatchQueue.main), perform: { newValue in
             audio = newValue
         })
     }
@@ -113,31 +138,36 @@ struct CustomControlsView: View {
     }
     
     var playbackInfoBar: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             PlaybackPreviewView(trackingState: $trackingState)
 #if os(iOS)
                 .frame(maxWidth: .infinity, maxHeight: 100)
 #elseif os(tvOS)
                 .frame(maxWidth: .infinity, maxHeight: 200)
 #endif
-            HStack {
-                Spacer()
-                Menu {
-                    playRatesMenu
-                    if let options = subtitles {
-                        subtitlesMenu(options: options)
+            if #available (iOS 14.0, macOS 13.0, tvOS 17.0, *) {
+                HStack(alignment:.bottom) {
+                    Spacer()
+                    Menu {
+                        if let options = audios {
+                            audioMenu(options: options)
+                        }
+                        if let options = subtitles {
+                            subtitlesMenu(options: options)
+                        }
+                        playRatesMenu
+                    } label: {
+                        Label("", systemImage: "ellipsis.circle")
                     }
-                    if let options = audios {
-                        audioMenu(options: options)
-                    }
-                } label: {
-                    Label("", systemImage: "ellipsis.circle")
+#if os(tvOS)
+                    .focused($focusState, equals: .options)
+#endif
                 }
             }
-            
         }
     }
     
+    @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
     var playRatesMenu: some View {
         Menu(content: {
             ForEach([0.5, 1.0, 1.5, 2.0, 2.5], id: \.self) { rate in
@@ -169,10 +199,11 @@ struct CustomControlsView: View {
                 })
             }
         }, label: {
-            Label("Rate", systemImage: "play.circle.fill")
+            Label("Rate", systemImage: "gauge.with.dots.needle.67percent")
         })
     }
     
+    @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
     func subtitlesMenu(options: [AVMediaSelectionOption]) -> some View {
         Menu(content: {
             ForEach(options, id:\.self) { subtitle in
@@ -191,10 +222,11 @@ struct CustomControlsView: View {
                 })
             }
         }, label: {
-            Label("Subtitle", systemImage: "tv.circle.fill")
+            Label("Subtitle", systemImage: "captions.bubble")
         })
     }
     
+    @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
     func audioMenu(options: [AVMediaSelectionOption]) -> some View {
         Menu(content: {
             ForEach(options, id:\.self) { audio in
@@ -213,7 +245,7 @@ struct CustomControlsView: View {
                 })
             }
         }, label: {
-            Label("Audio", systemImage: "tv.circle.fill")
+            Label("Audio", systemImage: "waveform.circle")
         })
     }
     
@@ -225,6 +257,9 @@ struct CustomControlsView: View {
                 .resizable()
         })
         .buttonStyle(.smallIcon)
+#if os(tvOS)
+        .focused($focusState, equals: .close)
+#endif
     }
     
     var skipBackwardButton: some View {
@@ -235,6 +270,9 @@ struct CustomControlsView: View {
                 .resizable()
         })
         .buttonStyle(.mediumIcon)
+#if os(tvOS)
+        .focused($focusState, equals: .skipBackward)
+#endif
     }
     
     var skipForwardButton: some View {
@@ -245,6 +283,9 @@ struct CustomControlsView: View {
                 .resizable()
         })
         .buttonStyle(.mediumIcon)
+#if os(tvOS)
+        .focused($focusState, equals: .skipForward)
+#endif
     }
     
     var playPauseButton: some View {
@@ -264,6 +305,10 @@ struct CustomControlsView: View {
             }
         })
         .buttonStyle(.largeIcon)
+#if os(tvOS)
+        .focused($focusState, equals: .play)
+        .prefersDefaultFocus(in: controlsNamespace)
+#endif
     }
             
     var rateFormatter: NumberFormatter {

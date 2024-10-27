@@ -9,9 +9,10 @@ import GameController
 import os
 
 #if os(tvOS)
+@MainActor fileprivate let sharedSession = RemoteTouchSession()
+
 public struct RemoteTouchModifier: ViewModifier {
     @Environment(\.isFocused) private var isFocused
-    @StateObject private var session = RemoteTouchSession()
     @State var remoteTouch: RemoteTouch
     init(_ remoteTouch: RemoteTouch) {
         self.remoteTouch = remoteTouch
@@ -19,14 +20,14 @@ public struct RemoteTouchModifier: ViewModifier {
     
     public func body(content: Content) -> some View {
         content
-            .onReceive(session.$delta.dropFirst().throttle(for: 0.02, scheduler: RunLoop.main, latest: true)) { value in
+            .onReceive(sharedSession.$delta.dropFirst().throttle(for: 0.02, scheduler: RunLoop.main, latest: true)) { value in
                 remoteTouch.onChanged?(value)
             }
             .onChange(of: isFocused) { isFocused in
                 if isFocused {
-                    session.attach()
+                    sharedSession.attach()
                 } else {
-                    session.detach()
+                    sharedSession.detach()
                     remoteTouch.onEnded?()
                 }
             }
@@ -48,6 +49,7 @@ extension View {
 fileprivate class RemoteTouchSession: ObservableObject {
     @Published var delta: CGPoint = .zero
     var isInteracting = false
+    var listenerCount: Int = 0
     
     init() {
         NotificationCenter.default.addObserver(self, selector: #selector(connected(notification:)), name: .GCControllerDidConnect, object: nil)
@@ -55,6 +57,8 @@ fileprivate class RemoteTouchSession: ObservableObject {
     }
     
     func attach() {
+        defer { listenerCount += 1 }
+        guard listenerCount == 0 else { return }
         GCController.startWirelessControllerDiscovery()
         for controller in GCController.controllers() {
             attach(controller)
@@ -62,6 +66,8 @@ fileprivate class RemoteTouchSession: ObservableObject {
     }
     
     func detach() {
+        defer { listenerCount -= 1 }
+        guard listenerCount == 1 else { return }
         for controller in GCController.controllers() {
             detach(controller)
         }

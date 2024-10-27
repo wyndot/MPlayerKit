@@ -20,19 +20,19 @@ struct VolumeSlider: View {
         HStack(alignment: .center, spacing: spacing) {
             if alignment == .leading {
                 volumeButton
-                if isShowingVolumeBar {
-                    TrackBar(value: $volume, state: $trackState)
-                        .animation(.easeInOut, value: isShowingVolumeBar)
-                        .transition(.opacity)
-                }
+                TrackBar(value: $volume, state: $trackState)
+                    .frame(maxWidth: isShowingVolumeBar ? .infinity : 1)
+                    .opacity(isShowingVolumeBar ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: isShowingVolumeBar)
+                    .transition(.opacity)
                 Spacer()
             } else {
                 Spacer()
-                if isShowingVolumeBar {
-                    TrackBar(value: $volume, state: $trackState)
-                        .animation(.easeInOut, value: isShowingVolumeBar)
-                        .transition(.opacity)
-                }
+                TrackBar(value: $volume, state: $trackState)
+                    .frame(maxWidth: isShowingVolumeBar ? .infinity : 1)
+                    .opacity(isShowingVolumeBar ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: isShowingVolumeBar)
+                    .transition(.opacity)
                 volumeButton
             }
         }
@@ -59,13 +59,13 @@ struct VolumeSlider: View {
                 case (true, false):
                     isMuted.toggle()
                     playerModel.player.isMuted = isMuted
-                    isShowingVolumeBar = true
+                    toggleVolumeBar(true)
                 case (false, false):
-                    isShowingVolumeBar = true
+                    toggleVolumeBar(true)
                 case (false, true):
                     isMuted.toggle()
                     playerModel.player.isMuted = isMuted
-                    isShowingVolumeBar = false
+                    toggleVolumeBar(false)
                 default:
                     break
             }
@@ -92,12 +92,16 @@ struct VolumeSlider: View {
     }
     
     func scheduleDismissal() {
-        Task {
+        Task { @MainActor in
             await accumulateTimer.schedule(action: "dimiss", timeInterval: 5.0, perform: {
-                Task { @MainActor in
-                    self.isShowingVolumeBar = false
+                DispatchQueue.main.async {
+                    toggleVolumeBar(false)
                 }
             })
         }
+    }
+    
+    func toggleVolumeBar(_ visible: Bool) {
+        self.isShowingVolumeBar = visible
     }
 }
