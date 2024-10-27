@@ -7,6 +7,7 @@
 
 import SwiftUI
 import os
+import AVFoundation
 
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
@@ -16,8 +17,27 @@ struct CustomControlsView: View {
     @State private var presentation: PlayerPresentation = .none
     @State private var playerState: PlayerState = .paused(reason: .userInitiated)
     @State private var trackingState: TrackState = .idle
+    @State private var subtitles: [AVMediaSelectionOption]? = nil
+    @State private var audios: [AVMediaSelectionOption]? = nil
+    @State private var subtitle: AVMediaSelectionOption? = nil
+    @State private var audio: AVMediaSelectionOption? = nil
+    @State private var rate: Float = 1.0
     
     var body: some View {
+        if #available(iOS 16.0, macOS 13.0, tvOS 16.0, *) {
+            content
+                .onChange(of: playerModel.player.defaultRate, perform: { newRate in
+                    rate = newRate
+                })
+        } else {
+            content
+                .onChange(of: playerModel.player.rate, perform: { newRate in
+                    rate = newRate
+                })
+        }
+    }
+    
+    var content: some View {
         ZStack(alignment: .center) {
             Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
             VStack {
@@ -39,6 +59,18 @@ struct CustomControlsView: View {
         })
         .onReceive(playerModel.$state, perform: { newValue in
             playerState = newValue
+        })
+        .onReceive(playerModel.$subtitles, perform: { newValue in
+            subtitles = newValue?.options
+        })
+        .onReceive(playerModel.$audios, perform: { newValue in
+            audios = newValue?.options
+        })
+        .onReceive(playerModel.$subtitle, perform: { newValue in
+            subtitle = newValue
+        })
+        .onReceive(playerModel.$audio, perform: { newValue in
+            audio = newValue
         })
     }
     
@@ -81,12 +113,108 @@ struct CustomControlsView: View {
     }
     
     var playbackInfoBar: some View {
-        PlaybackPreviewView(trackingState: $trackingState)
+        ZStack {
+            PlaybackPreviewView(trackingState: $trackingState)
 #if os(iOS)
-            .frame(maxWidth: .infinity, maxHeight: 100)
+                .frame(maxWidth: .infinity, maxHeight: 100)
 #elseif os(tvOS)
-            .frame(maxWidth: .infinity, maxHeight: 200)
+                .frame(maxWidth: .infinity, maxHeight: 200)
 #endif
+            HStack {
+                Spacer()
+                Menu {
+                    playRatesMenu
+                    if let options = subtitles {
+                        subtitlesMenu(options: options)
+                    }
+                    if let options = audios {
+                        audioMenu(options: options)
+                    }
+                } label: {
+                    Label("", systemImage: "ellipsis.circle")
+                }
+            }
+            
+        }
+    }
+    
+    var playRatesMenu: some View {
+        Menu(content: {
+            ForEach([0.5, 1.0, 1.5, 2.0, 2.5], id: \.self) { rate in
+                Button(action: {
+                    var wasPlaying = false
+                    if case .playing = playerModel.state {
+                        wasPlaying = true
+                        playerModel.player.pause()
+                    }
+                    if #available(iOS 16.0, macOS 13.0, tvOS 16.0, *) {
+                        playerModel.player.defaultRate = Float(rate)
+                    } else {
+                        playerModel.player.rate = Float(rate)
+                    }
+                    
+                    if wasPlaying {
+                        playerModel.player.play()
+                    }
+                }, label: {
+                    Label{
+                        Text("\(rate as NSNumber, formatter: rateFormatter)").font(.subheadline)
+                    } icon: {
+                        if Float(rate) == self.rate {
+                            Image(systemName: "checkmark")
+                                .imageScale(.small)
+                                .padding(.trailing, 10)
+                        }
+                    }
+                })
+            }
+        }, label: {
+            Label("Rate", systemImage: "play.circle.fill")
+        })
+    }
+    
+    func subtitlesMenu(options: [AVMediaSelectionOption]) -> some View {
+        Menu(content: {
+            ForEach(options, id:\.self) { subtitle in
+                Button(action: {
+                    playerModel.selectSubtitles(subtitle)
+                }, label: {
+                    Label {
+                        Text(subtitle.displayName).font(.subheadline)
+                    } icon: {
+                        if self.subtitle == subtitle {
+                            Image(systemName: "checkmark")
+                                .imageScale(.small)
+                                .padding(.trailing, 10)
+                        }
+                    }
+                })
+            }
+        }, label: {
+            Label("Subtitle", systemImage: "tv.circle.fill")
+        })
+    }
+    
+    func audioMenu(options: [AVMediaSelectionOption]) -> some View {
+        Menu(content: {
+            ForEach(options, id:\.self) { audio in
+                Button(action: {
+                    playerModel.selectAudio(audio)
+                }, label: {
+                    Label {
+                        Text(audio.displayName).font(.subheadline)
+                    } icon: {
+                        if self.audio == audio {
+                            Image(systemName: "checkmark")
+                                .imageScale(.small)
+                                .padding(.trailing, 10)
+                        }
+                    }
+                })
+            }
+        }, label: {
+            Label("Audio", systemImage: "tv.circle.fill")
+        })
     }
     
     var closeButton: some View {
@@ -136,6 +264,13 @@ struct CustomControlsView: View {
             }
         })
         .buttonStyle(.largeIcon)
+    }
+            
+    var rateFormatter: NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = 1
+        formatter.minimumFractionDigits = 1
+        return formatter
     }
 }
 
