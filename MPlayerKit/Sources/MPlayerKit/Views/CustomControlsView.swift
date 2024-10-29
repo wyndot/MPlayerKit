@@ -11,6 +11,7 @@ import AVFoundation
 
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
+@MainActor
 struct CustomControlsView: View {
 #if os(tvOS)
     enum ControlsFocusState: Hashable {
@@ -20,6 +21,7 @@ struct CustomControlsView: View {
         case skipForward
         case skipBackward
         case options
+        case pip
     }
     @Namespace private var controlsNamespace
     @FocusState private var focusState: ControlsFocusState?
@@ -34,6 +36,8 @@ struct CustomControlsView: View {
     @State private var subtitle: AVMediaSelectionOption? = nil
     @State private var audio: AVMediaSelectionOption? = nil
     @State private var rate: Float = 1.0
+    @State private var isPiPActive: Bool = false
+    @State private var isPiPPossible: Bool = false
     
     var body: some View {
         if #available(iOS 16.0, macOS 13.0, tvOS 16.0, *) {
@@ -52,10 +56,13 @@ struct CustomControlsView: View {
     var content: some View {
         GeometryReader { geometry in
             ZStack(alignment: .center) {
+                let halfHeight = geometry.size.height / 2.0
+                let top = halfHeight - safeAreaInsets.top
+                let bottom = halfHeight - safeAreaInsets.bottom
                 Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
                 topbar
                     .alignmentGuide(VerticalAlignment.center, computeValue: { d in
-                        d[.top] + geometry.size.height / 2.0 - safeAreaInsets.top
+                        d[.top] + top
                     })
                 
                 middlebar
@@ -68,7 +75,7 @@ struct CustomControlsView: View {
                     bottombar
                 }
                 .alignmentGuide(VerticalAlignment.center, computeValue: { d in
-                    d[.bottom] - geometry.size.height / 2.0 + safeAreaInsets.bottom
+                    d[.bottom] - bottom
                 })
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -97,6 +104,12 @@ struct CustomControlsView: View {
         .onReceive(playerModel.$audio.receive(on: DispatchQueue.main), perform: { newValue in
             audio = newValue
         })
+        .onReceive(playerModel.$isPiPActive.receive(on: DispatchQueue.main), perform: { newValue in
+            isPiPActive = newValue
+        })
+        .onReceive(playerModel.$isPiPPossible.receive(on: DispatchQueue.main), perform: { newValue in
+            isPiPPossible = newValue
+        })
     }
     
     var topbar: some View {
@@ -107,7 +120,10 @@ struct CustomControlsView: View {
             Spacer()
             #if os(iOS)
             VolumeSlider()
+            Spacer()
             #endif
+            pipButton
+            airplayButton
         }
         .frame(maxWidth: .infinity)
 #if os(tvOS)
@@ -309,6 +325,24 @@ struct CustomControlsView: View {
         .focused($focusState, equals: .play)
         .prefersDefaultFocus(in: controlsNamespace)
 #endif
+    }
+    
+    var pipButton: some View {
+        Button(action: {
+            playerModel.togglePiP()
+        }, label: {
+            Image(systemName: isPiPActive ? "pip.exit" : "pip.enter")
+        })
+        .buttonStyle(.smallIcon)
+        .disabled(!isPiPPossible)
+#if os(tvOS)
+        .focused($focusState, equals: .pip)
+#endif
+    }
+    
+    var airplayButton: some View {
+        AirPlayPickerView()
+            .frame(width: IconButtonSize.small.points(), height: IconButtonSize.small.points())
     }
             
     var rateFormatter: NumberFormatter {

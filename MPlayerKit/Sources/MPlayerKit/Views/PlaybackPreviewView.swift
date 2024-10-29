@@ -18,7 +18,7 @@ struct PlaybackPreviewView: View {
                 switch trackingState {
                     case .tracking(value: let value):
                         let offset = offset(geometrySize: geometrySize, previewSize: previewSize, progress: value)
-                        VideoRenderView(player: playerPreviewModel.player)
+                        VideoRenderView()
                             .frame(maxWidth: previewSize.width, maxHeight: previewSize.height)
                             .offset(x: offset.x, y: offset.y)
                     default:

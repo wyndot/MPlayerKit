@@ -54,8 +54,13 @@ public class PlayerModel {
     @Published private(set) var currentTime: CMTime?
     @Published private(set) var aspectRatio: CGFloat = 16.0 / 9.0
     @Published public var presentation: PlayerPresentation = .none
+    @Published private(set) var isPiPActive: Bool = false
+    @Published private(set) var isPiPPossible: Bool = false
     private(set) var player: AVPlayer = AVPlayer()
+    private(set) var pipControler: AVPictureInPictureController?
     private var playerTimeControlStatusObservationToken: NSKeyValueObservation?
+    private var pipActiveObservationToken: NSKeyValueObservation?
+    private var pipPossibleObservationToken: NSKeyValueObservation?
     private var playerItemDidEndObservationTask: Task<Void, Never>?
 #if !os(macOS)
     private var playerAudioInterruptionObservationTask: Task<Void, Never>?
@@ -97,8 +102,14 @@ public class PlayerModel {
         }
         currentTime = player.currentTime()
     }
-    public func play() { player.play() }
-    public func pause() { player.pause() }
+    public func play() {
+        setMoviePlaybackAudioSession()
+        player.play()
+    }
+    public func pause() {
+        player.pause()
+        resetMoviePlaybackAudioSession()
+    }
     public func seek(_ to: CMTime) { player.seek(to: to) }
     public func skip(_ seconds: TimeInterval) {
         let time = CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
@@ -128,6 +139,7 @@ extension PlayerModel {
         playerTimeControlStatusObservationToken?.invalidate()
         playerItemDidEndObservationTask?.cancel()
         stopObservingPlayerPeriodicTime()
+        stopObservePiPStatus()
         #if !os(macOS)
         playerAudioInterruptionObservationTask?.cancel()
         #endif
@@ -189,9 +201,11 @@ extension PlayerModel {
                     guard let self else { return }
                     if result.type == .began {
                         self.interruption = result
+                        self.resetMoviePlaybackAudioSession()
                     } else if result.type == .ended {
                         self.interruption = nil
                         if result.options == .shouldResume {
+                            self.setMoviePlaybackAudioSession()
                             self.player.play()
                         }
                     }
@@ -246,5 +260,70 @@ extension PlayerModel {
         guard let currentItem = player.currentItem, let audios else { return }
         currentItem.select(option, in: audios)
         audio = currentItem.currentMediaSelection.selectedMediaOption(in: audios)
+    }
+}
+
+// Picture In Picture
+extension PlayerModel{
+    internal func createPIPController(_ playerLayer: AVPlayerLayer) {
+        guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        pipControler = AVPictureInPictureController(playerLayer: playerLayer)
+        startObservePiPStatus()
+    }
+    
+    /**
+     * Toggle the Picture In Picture
+     *
+     */
+    public func togglePiP() {
+        guard let pipControler else { return }
+        if pipControler.isPictureInPictureActive {
+            pipControler.stopPictureInPicture()
+        } else  {
+            pipControler.startPictureInPicture()
+        }
+    }
+    
+    private func startObservePiPStatus() {
+        pipActiveObservationToken?.invalidate()
+        pipActiveObservationToken = pipControler?.observe(\.isPictureInPictureActive, changeHandler: { observed, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                isPiPActive = observed.isPictureInPictureActive
+            }
+        })
+        pipPossibleObservationToken?.invalidate()
+        pipPossibleObservationToken = pipControler?.observe(\.isPictureInPicturePossible, changeHandler: { observed, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                isPiPPossible = observed.isPictureInPicturePossible
+            }
+        })
+    }
+    
+    private func stopObservePiPStatus() {
+        pipActiveObservationToken?.invalidate()
+        pipActiveObservationToken = nil
+        pipPossibleObservationToken?.invalidate()
+        pipPossibleObservationToken = nil
+    }
+}
+
+// Audio
+extension PlayerModel {
+    private func setMoviePlaybackAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        } catch {
+            logger.error("Failed to Set Audio Session to moviePlayback")
+        }
+    }
+    
+    private func resetMoviePlaybackAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        } catch {
+            logger.error("Failed to Reset moviePlayback Audio Session")
+        }
     }
 }

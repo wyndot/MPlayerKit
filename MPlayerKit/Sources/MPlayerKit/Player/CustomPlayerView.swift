@@ -35,7 +35,7 @@ struct CustomPlayerView<C>: View where C: View {
 #if os(iOS)
     private var content: some View {
         ZStack {
-            VideoRenderView(player: playerModel.player)
+            VideoRenderView()
                 .zIndex(0)
                 .gesture(
                     TapGesture(count: 1)

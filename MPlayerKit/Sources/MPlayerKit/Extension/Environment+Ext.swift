@@ -43,7 +43,7 @@ public struct SafeAreaInsetsKey: @preconcurrency EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    var safeAreaInsets: UIEdgeInsets {
+    @MainActor var safeAreaInsets: UIEdgeInsets {
         self[SafeAreaInsetsKey.self]
     }
 }
