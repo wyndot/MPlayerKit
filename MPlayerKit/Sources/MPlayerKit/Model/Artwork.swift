@@ -8,6 +8,10 @@
 import Foundation
 
 public struct Artwork: Hashable, Sendable, ArtworkCacheable {
+    public enum Orientation {
+        case landscape
+        case portrait
+    }
     public let portraitUrl: URL
     public let landscapeUrl: URL
     
@@ -19,5 +23,12 @@ public struct Artwork: Hashable, Sendable, ArtworkCacheable {
     public init(url: URL) {
         self.portraitUrl = url
         self.landscapeUrl = url
+    }
+    
+    public func artwork(for orientation: Orientation) async throws -> Data {
+        switch orientation {
+            case .portrait: try await artwork(for: self.portraitUrl)
+            case .landscape: try await artwork(for: self.landscapeUrl)
+        }
     }
 }

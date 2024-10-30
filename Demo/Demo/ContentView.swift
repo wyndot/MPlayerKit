@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MPlayerKit
+import AVKit
 
 struct VOD: Playable {
     var title: String
@@ -15,6 +16,11 @@ struct VOD: Playable {
     var asset: URL
     var previewAsset: URL?
     var mediaType: MPlayerKit.MediaType
+    var releaseYear: Int?
+    var genres: [String]?
+    var contentRating: String?
+    
+    func extraExternalMetadata() -> [AVMetadataItem] { [] }
 }
 
 private let vod: VOD = .init(title: "Sintel",

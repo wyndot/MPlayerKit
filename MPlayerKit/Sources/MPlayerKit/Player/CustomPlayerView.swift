@@ -58,7 +58,7 @@ struct CustomPlayerView<C>: View where C: View {
                 withAnimation{ isShowingControls.toggle() }
                 focusState = .controls
             }, label: {
-                VideoRenderView(player: playerModel.player)
+                VideoRenderView()
             })
             .zIndex(0)
             .buttonStyle(.none)

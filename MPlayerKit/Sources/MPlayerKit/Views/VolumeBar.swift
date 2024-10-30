@@ -76,7 +76,7 @@ struct VolumeSlider: View {
         }, label: {
             image
         })
-        .buttonStyle(.smallIcon)
+        .buttonStyle(.xsmallIcon)
     }
     
     var image: some View {

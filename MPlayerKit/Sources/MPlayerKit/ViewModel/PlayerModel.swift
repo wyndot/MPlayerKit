@@ -5,6 +5,7 @@
 //  Created by Michael Zhang on 10/23/24.
 //
 @preconcurrency import AVKit
+import MediaPlayer
 import Combine
 import os
 
@@ -13,6 +14,13 @@ private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "Playe
 public enum PlayerState {
     case playing
     case paused (reason: PlayerPauseReason)
+    
+    var isPlaying: Bool {
+        switch self {
+            case .playing: true
+            default: false
+        }
+    }
 }
 
 public enum PlayerPauseReason {
@@ -31,6 +39,10 @@ public enum PlayerPresentation: Equatable {
     case inline
 }
 
+public enum PlayerError: Error {
+    case notAvailable
+    case invalidImageFormat
+}
 
 @MainActor
 public class PlayerModel {
@@ -46,8 +58,12 @@ public class PlayerModel {
             selectAudio(audio)
         }
     }
-    @Published private(set) var subtitles: AVMediaSelectionGroup?
-    @Published private(set) var audios: AVMediaSelectionGroup?
+    @Published public var languages: [AVMediaSelectionOption]? {
+        didSet { }
+    }
+    @Published private(set) var availableSubtitles: AVMediaSelectionGroup?
+    @Published private(set) var availableAudios: AVMediaSelectionGroup?
+    @Published private(set) var availableLanguages: [AVMediaSelectionGroup]?
     @Published private(set) var state: PlayerState = .paused(reason: .userInitiated)
     @Published private(set) var currentItem: (any Playable)?
     @Published private(set) var duration: CMTime?
@@ -62,6 +78,9 @@ public class PlayerModel {
     private var pipActiveObservationToken: NSKeyValueObservation?
     private var pipPossibleObservationToken: NSKeyValueObservation?
     private var playerItemDidEndObservationTask: Task<Void, Never>?
+#if os(iOS)
+    private var nowPlayingSession: NowPlayingSession = .init()
+#endif
 #if !os(macOS)
     private var playerAudioInterruptionObservationTask: Task<Void, Never>?
     private var interruption: InterruptionResult?
@@ -70,6 +89,9 @@ public class PlayerModel {
     
     public init() {
         logger.debug("\(Self.self) Initialized")
+        #if os(iOS)
+        nowPlayingSession.active(player: player)
+        #endif
         startObservingPlayback()
     }
     
@@ -88,19 +110,29 @@ public class PlayerModel {
      */
     public func load(_ item: any Playable) async {
         let playerItem = item.playerItem()
+        let externalMetadata = await externalMetadata(for: item)
+        let extraMetadata = item.extraExternalMetadata()
+        playerItem.externalMetadata = externalMetadata + extraMetadata
         currentItem = item
         player.replaceCurrentItem(with: playerItem)
         duration = try? await playerItem.asset.load(.duration)
         aspectRatio = await playerItem.loadAspectRatio()
-        subtitles = try? await playerItem.availableSutitleSelectionGroup()
-        audios = try? await playerItem.availableAudioSelectionGroup()
-        if let subtitles {
-            subtitle = playerItem.currentMediaSelection.selectedMediaOption(in: subtitles)
+        availableSubtitles = try? await playerItem.availableSutitleSelectionGroup()
+        availableAudios = try? await playerItem.availableAudioSelectionGroup()
+        availableLanguages = try? await playerItem.availableLanguageSelectionGroup()
+        if let availableSubtitles {
+            subtitle = playerItem.currentMediaSelection.selectedMediaOption(in: availableSubtitles)
         }
-        if let audios {
-            audio = playerItem.currentMediaSelection.selectedMediaOption(in: audios)
+        if let availableAudios {
+            audio = playerItem.currentMediaSelection.selectedMediaOption(in: availableAudios)
+        }
+        if let availableLanguages {
+            languages = playerItem.currentLanguageOptions(in: availableLanguages)
         }
         currentTime = player.currentTime()
+        #if os(iOS)
+        publishNowPlayingStaticMetadata()
+        #endif
     }
     public func play() {
         setMoviePlaybackAudioSession()
@@ -223,6 +255,9 @@ extension PlayerModel {
             guard let self else { return }
             Task { @MainActor in
                 currentTime = time
+                #if os(iOS)
+                publishNowPlayingDynamicMetadata()
+                #endif 
             }
         }
     }
@@ -245,9 +280,9 @@ extension PlayerModel {
      *  - option: The selected subtitle option
      */
     func selectSubtitles(_ option: AVMediaSelectionOption?) {
-        guard let currentItem = player.currentItem, let subtitles else { return }
-        currentItem.select(option, in: subtitles)
-        subtitle = currentItem.currentMediaSelection.selectedMediaOption(in: subtitles)
+        guard let currentItem = player.currentItem, let availableSubtitles else { return }
+        currentItem.select(option, in: availableSubtitles)
+        subtitle = currentItem.currentMediaSelection.selectedMediaOption(in: availableSubtitles)
     }
     
     /**
@@ -257,9 +292,9 @@ extension PlayerModel {
      *  - option: The selected audio option
      */
     func selectAudio(_ option: AVMediaSelectionOption?) {
-        guard let currentItem = player.currentItem, let audios else { return }
-        currentItem.select(option, in: audios)
-        audio = currentItem.currentMediaSelection.selectedMediaOption(in: audios)
+        guard let currentItem = player.currentItem, let availableAudios else { return }
+        currentItem.select(option, in: availableAudios)
+        audio = currentItem.currentMediaSelection.selectedMediaOption(in: availableAudios)
     }
 }
 
@@ -325,5 +360,93 @@ extension PlayerModel {
         } catch {
             logger.error("Failed to Reset moviePlayback Audio Session")
         }
+    }
+}
+
+// NowPlaying Info
+extension PlayerModel {
+    /**
+     * External metadata for the AVPlayerViewController
+     */
+    private func externalMetadata(for playable: any Playable) async -> [AVMetadataItem] {
+        var mapping: [AVMetadataIdentifier: Any?] = [
+            .commonIdentifierTitle: playable.title,
+            .commonIdentifierDescription: playable.synopsis,
+            .commonIdentifierCreationDate: playable.releaseYear,
+            .iTunesMetadataContentRating: playable.contentRating,
+            .quickTimeMetadataGenre: playable.genres
+        ]
+        mapping[.commonIdentifierArtwork] = try? await playable.poster?.artwork(for: .portrait)
+        
+        return mapping.compactMap({ createMetadatItem(for: $0, value: $1)})
+    }
+    
+#if os(iOS)
+    /**
+     * Publish the now playing metadata which NOT changing during playing to the Media Player Now Playing Session
+     */
+    private func publishNowPlayingStaticMetadata() {
+        Task { [weak self] in
+            guard let self else { return }
+            let metadata = try await nowPlayingStaticMetadata()
+            nowPlayingSession.publish(metadata: metadata, isPlaying: state.isPlaying)
+        }
+    }
+    
+    /**
+     * Publish the now playing metadata which changing during playing to the Media Player Now Playing Session
+     */
+    private func publishNowPlayingDynamicMetadata() {
+        Task { [weak self] in
+            guard let self else { return }
+            let dynamicMetadat = try nowPlayingDynamicMetadata()
+            nowPlayingSession.publish(metadata: dynamicMetadat, isPlaying: state.isPlaying)
+        }
+    }
+    
+    /**
+     * The dictionary contains  the now playing metadata which are not changing during the playing
+     */
+    private func nowPlayingStaticMetadata() async throws -> [String: Any] {
+        guard let currentItem else { throw PlayerError.notAvailable }
+        var metadata: [String: Any] = [MPNowPlayingInfoPropertyAssetURL: currentItem.asset,
+                                   MPNowPlayingInfoPropertyIsLiveStream: currentItem.isLive,
+                                      MPNowPlayingInfoPropertyMediaType: currentItem.isVideo ? MPNowPlayingInfoMediaType.video.rawValue : MPNowPlayingInfoMediaType.audio.rawValue,
+                                               MPMediaItemPropertyTitle: currentItem.title,
+                                            MPMediaItemPropertyComments: currentItem.synopsis ?? ""
+        ]
+        if let artworkData = try? await currentItem.poster?.artwork(for: .portrait), let uiImage = UIImage(data: artworkData) {
+            metadata[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(image: uiImage)
+        }
+        return metadata
+    }
+    
+    /**
+     * The dictionary contains the now playing metadata which are chaning during the playing
+     */
+    private func nowPlayingDynamicMetadata() throws -> [String: Any] {
+        guard let currentItem = player.currentItem, currentItem.status == .readyToPlay else { throw PlayerError.notAvailable }
+        
+        var mpLanguageOptions = [MPNowPlayingInfoLanguageOptionGroup]()
+        var mpCurrentSelectionOptions = [MPNowPlayingInfoLanguageOption]()
+        if let languages, let availableLanguages {
+            mpLanguageOptions = availableLanguages.map({ $0.makeNowPlayingInfoLanguageOptionGroup() })
+            mpCurrentSelectionOptions = languages.compactMap({ $0.makeNowPlayingInfoLanguageOption() })
+        }
+        
+        return [MPNowPlayingInfoPropertyPlaybackRate: player.rate,
+         MPNowPlayingInfoPropertyElapsedPlaybackTime: CMTimeGetSeconds(currentItem.currentTime()),
+                 MPMediaItemPropertyPlaybackDuration: CMTimeGetSeconds(currentItem.duration),
+      MPNowPlayingInfoPropertyCurrentLanguageOptions: mpCurrentSelectionOptions,
+    MPNowPlayingInfoPropertyAvailableLanguageOptions: mpLanguageOptions]
+    }
+#endif
+    
+    private func createMetadatItem(for identifier: AVMetadataIdentifier, value: Any?) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = identifier
+        item.value = value as? NSCopying & NSObjectProtocol
+        item.extendedLanguageTag = "und"
+        return item
     }
 }

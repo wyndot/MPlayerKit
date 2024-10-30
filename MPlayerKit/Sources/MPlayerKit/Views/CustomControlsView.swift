@@ -59,13 +59,19 @@ struct CustomControlsView: View {
                 let halfHeight = geometry.size.height / 2.0
                 let top = halfHeight - safeAreaInsets.top
                 let bottom = halfHeight - safeAreaInsets.bottom
+                let leading = CGFloat(safeAreaInsets.left)
+                let trailing = CGFloat(safeAreaInsets.right)
                 Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
                 topbar
+                    .padding(.leading, leading)
+                    .padding(.trailing, trailing)
                     .alignmentGuide(VerticalAlignment.center, computeValue: { d in
                         d[.top] + top
                     })
                 
                 middlebar
+                    .padding(.leading, leading)
+                    .padding(.trailing, trailing)
                     .alignmentGuide(VerticalAlignment.center, computeValue: { d in
                         d[VerticalAlignment.center]
                     })
@@ -74,6 +80,8 @@ struct CustomControlsView: View {
                     playbackInfoBar
                     bottombar
                 }
+                .padding(.leading, leading)
+                .padding(.trailing, trailing)
                 .alignmentGuide(VerticalAlignment.center, computeValue: { d in
                     d[.bottom] - bottom
                 })
@@ -92,10 +100,10 @@ struct CustomControlsView: View {
         .onReceive(playerModel.$state.receive(on: DispatchQueue.main), perform: { newValue in
             playerState = newValue
         })
-        .onReceive(playerModel.$subtitles.receive(on: DispatchQueue.main), perform: { newValue in
+        .onReceive(playerModel.$availableSubtitles.receive(on: DispatchQueue.main), perform: { newValue in
             subtitles = newValue?.options
         })
-        .onReceive(playerModel.$audios.receive(on: DispatchQueue.main), perform: { newValue in
+        .onReceive(playerModel.$availableAudios.receive(on: DispatchQueue.main), perform: { newValue in
             audios = newValue?.options
         })
         .onReceive(playerModel.$subtitle.receive(on: DispatchQueue.main), perform: { newValue in
@@ -113,7 +121,7 @@ struct CustomControlsView: View {
     }
     
     var topbar: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .center, spacing: topBarSpacing) {
             if case .fullscreen(_) = presentation {
                 closeButton
             }
@@ -132,7 +140,7 @@ struct CustomControlsView: View {
     }
     
     var middlebar: some View {
-        HStack(alignment: .center, spacing: 20) {
+        HStack(alignment: .center, spacing: middleBarSpacing) {
             skipBackwardButton
             playPauseButton
             skipForwardButton
@@ -173,8 +181,10 @@ struct CustomControlsView: View {
                         }
                         playRatesMenu
                     } label: {
-                        Label("", systemImage: "ellipsis.circle")
+                        Image(systemName: "ellipsis.circle")
+                            .resizable()
                     }
+                    .buttonStyle(.smallIcon)
 #if os(tvOS)
                     .focused($focusState, equals: .options)
 #endif
@@ -272,7 +282,7 @@ struct CustomControlsView: View {
             Image(systemName: "xmark")
                 .resizable()
         })
-        .buttonStyle(.smallIcon)
+        .buttonStyle(.xsmallIcon)
 #if os(tvOS)
         .focused($focusState, equals: .close)
 #endif
@@ -332,8 +342,11 @@ struct CustomControlsView: View {
             playerModel.togglePiP()
         }, label: {
             Image(systemName: isPiPActive ? "pip.exit" : "pip.enter")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
         })
-        .buttonStyle(.smallIcon)
+        .buttonStyle(.pip)
+        .frame(width: pipButtonSize, height: pipButtonSize + 5)
         .disabled(!isPiPPossible)
 #if os(tvOS)
         .focused($focusState, equals: .pip)
@@ -342,7 +355,7 @@ struct CustomControlsView: View {
     
     var airplayButton: some View {
         AirPlayPickerView()
-            .frame(width: IconButtonSize.small.points(), height: IconButtonSize.small.points())
+            .frame(width: airplayButtonSize, height: airplayButtonSize)
     }
             
     var rateFormatter: NumberFormatter {
@@ -350,6 +363,37 @@ struct CustomControlsView: View {
         formatter.maximumFractionDigits = 1
         formatter.minimumFractionDigits = 1
         return formatter
+    }
+    
+    var topBarSpacing: CGFloat {
+#if os(tvOS)
+        40
+#else
+        10
+#endif
+    }
+    var middleBarSpacing: CGFloat {
+        #if os(tvOS)
+        120
+        #else
+        20
+        #endif
+    }
+    
+    var pipButtonSize: CGFloat {
+#if os(tvOS)
+        82
+#else
+        45
+#endif
+    }
+    
+    var airplayButtonSize: CGFloat {
+#if os(tvOS)
+        50
+#else
+        20
+#endif
     }
 }
 
