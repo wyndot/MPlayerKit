@@ -83,11 +83,15 @@ extension PlayerPreviewModel {
                     case .waitingToPlayAtSpecifiedRate:
                         switch observed.reasonForWaitingToPlay {
                             case .toMinimizeStalls:
-                                state = .paused(reason: .toMinimizeStalls)
+                                state = .buffering(reason: .toMinimizeStalls)
                             case .evaluatingBufferingRate:
-                                state = .paused(reason: .evaluatingBufferRate)
+                                state = .buffering(reason: .evaluatingBufferRate)
+                            case .noItemToPlay:
+                                state = .buffering(reason: .noItemToPlay)
+                            case .waitingForCoordinatedPlayback:
+                                state = .buffering(reason: .waitingForCoorindatedPlayback)
                             default:
-                                state = .paused(reason: .buffering)
+                                state = .buffering(reason: .unknown)
                         }
                     @unknown default: break
                 }

@@ -22,9 +22,10 @@ struct InlineSystemPlayerView: View {
             Color.black.ignoresSafeArea(.all)
             SystemPlayerView(prepare: { avPlayerController in
                 logger.debug("prepareCustomPlayerView: \(String(describing: avPlayerController))")
-            },
-                       onTimeChange: { time in
+            }, onTimeChange: { time in
                 logger.debug("onTimeChange: \(String(describing: time))")
+            }, onStateChange: { state in
+                logger.debug("onStateChange: \(String(describing: state))")
             })
                 .ignoresSafeArea(.all)
                 .task {
@@ -34,9 +35,11 @@ struct InlineSystemPlayerView: View {
                     }
                 }
                 .onAppear {
+                    logger.debug("onStateChange: Started")
                     playerModel.play()
                 }
                 .onDisappear {
+                    logger.debug("onStateChange: Ended")
                     playerModel.pause()
                 }
         }

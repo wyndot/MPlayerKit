@@ -50,6 +50,8 @@ struct FullScreenSystemPlayerView: View {
 #endif
         }, onTimeChange: { time in
             logger.debug("onTimeChange: \(String(describing: time))")
+        }, onStateChange: { state in
+            logger.debug("onStateChange: \(String(describing: state))")
         })
     }
     

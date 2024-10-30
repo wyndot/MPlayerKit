@@ -7,6 +7,9 @@
 import SwiftUI
 import Combine
 import AVKit
+import os 
+
+private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "CustomPlayerFullScreenPresenter")
 
 public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
     @Environment(\.playerModel) private var playerModel
@@ -15,6 +18,7 @@ public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
     @ViewBuilder var constomControls: (_ playerModel: PlayerModel) -> C
     var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
+    var onStateChange: ((_ state: PlayerState) -> Void)?
     
     public func body(content: Content) -> some View {
         content
@@ -24,12 +28,17 @@ public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
                 ZStack {
                     Color.black.ignoresSafeArea(.all)
                     
-                    CustomPlayerView(controls: constomControls, prepare: prepare, onTimeChange: onTimeChange)
+                    CustomPlayerView(controls: constomControls,
+                                     prepare: prepare,
+                                     onTimeChange: onTimeChange,
+                                     onStateChange: onStateChange)
                         .ignoresSafeArea(.all)
                         .onAppear {
+                            logger.debug("onStateChange: Stated")
                             if autoplay { playerModel.play() }
                         }
                         .onDisappear {
+                            logger.debug("onStateChange: Ended")
                             playerModel.pause()
                         }
                 }
@@ -49,7 +58,11 @@ public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
 extension View {
     public func customPlayerFullScreenPresenter<C>(customControls: @escaping (_ playerModel: PlayerModel) -> C,
                                                    prepare: ((_ playerLayer: AVPlayerLayer) -> Void)? = nil,
-                                                   onTimeChange: ((_ time: CMTime) -> Void)? = nil) -> some View where C: View {
-        modifier(CustomPlayerFullScreenPresenter(constomControls: customControls, prepare: prepare, onTimeChange: onTimeChange))
+                                                   onTimeChange: ((_ time: CMTime) -> Void)? = nil,
+                                                   onStateChange: ((_ state: PlayerState) -> Void)? = nil) -> some View where C: View {
+        modifier(CustomPlayerFullScreenPresenter(constomControls: customControls,
+                                                 prepare: prepare,
+                                                 onTimeChange: onTimeChange,
+                                                 onStateChange: onStateChange))
     }
 }

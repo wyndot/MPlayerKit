@@ -16,10 +16,14 @@ public struct SystemPlayerView: UIViewControllerRepresentable {
     @Environment(\.playerModel) private var playerModel
     var prepare: ((_ controller: AVPlayerViewController) -> Void)?
     var onTimeChange: ((_ time: CMTime) -> Void)?
+    var onStateChange: ((_ state: PlayerState) -> Void)?
 
-    public init(prepare: ((_: AVPlayerViewController) -> Void)? = nil, onTimeChange: ((_: CMTime) -> Void)? = nil) {
+    public init(prepare: ((_: AVPlayerViewController) -> Void)? = nil,
+                onTimeChange: ((_: CMTime) -> Void)? = nil,
+                onStateChange: ((_: PlayerState) -> Void)? = nil) {
         self.prepare = prepare
         self.onTimeChange = onTimeChange
+        self.onStateChange = onStateChange
     }
     
     public func makeUIViewController(context: Context) -> AVPlayerViewController {
@@ -50,9 +54,12 @@ public struct SystemPlayerView: UIViewControllerRepresentable {
         init(parent: SystemPlayerView) {
             self.parent = parent
             super.init()
-            parent.playerModel.$currentTime.sink(receiveValue: { [weak self ] time in
+            parent.playerModel.$currentTime.sink(receiveValue: { time in
                 guard let time else { return }
                 parent.onTimeChange?(time)
+            }).store(in: &cancellables)
+            parent.playerModel.$state.sink(receiveValue: { state in
+                parent.onStateChange?(state)
             }).store(in: &cancellables)
         }
         #if os(iOS)

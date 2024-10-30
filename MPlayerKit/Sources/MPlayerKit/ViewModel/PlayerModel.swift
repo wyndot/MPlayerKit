@@ -14,6 +14,7 @@ private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "Playe
 public enum PlayerState {
     case playing
     case paused (reason: PlayerPauseReason)
+    case buffering(reason: PlayerBufferingReason)
     
     var isPlaying: Bool {
         switch self {
@@ -26,11 +27,16 @@ public enum PlayerState {
 public enum PlayerPauseReason {
     case userInitiated
     case interrupted
-    case toMinimizeStalls
-    case evaluatingBufferRate
-    case buffering
     case endOfMedia
     case error(Error)
+}
+
+public enum PlayerBufferingReason {
+    case unknown
+    case toMinimizeStalls
+    case evaluatingBufferRate
+    case noItemToPlay
+    case waitingForCoorindatedPlayback
 }
 
 public enum PlayerPresentation: Equatable {
@@ -194,11 +200,15 @@ extension PlayerModel {
                     case .waitingToPlayAtSpecifiedRate:
                         switch observed.reasonForWaitingToPlay {
                             case .toMinimizeStalls:
-                                state = .paused(reason: .toMinimizeStalls)
+                                state = .buffering(reason: .toMinimizeStalls)
                             case .evaluatingBufferingRate:
-                                state = .paused(reason: .evaluatingBufferRate)
+                                state = .buffering(reason: .evaluatingBufferRate)
+                            case .noItemToPlay:
+                                state = .buffering(reason: .noItemToPlay)
+                            case .waitingForCoordinatedPlayback:
+                                state = .buffering(reason: .waitingForCoorindatedPlayback)
                             default:
-                                state = .paused(reason: .buffering)
+                                state = .buffering(reason: .unknown)
                         }
                     @unknown default: break
                 }

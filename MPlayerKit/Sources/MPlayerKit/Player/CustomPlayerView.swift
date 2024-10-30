@@ -9,7 +9,7 @@ import SwiftUI
 import AVKit
 import os
 
-private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
+private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "CustomPlayerView")
 
 public struct CustomPlayerView<C>: View where C: View {
 #if os(tvOS)
@@ -27,13 +27,16 @@ public struct CustomPlayerView<C>: View where C: View {
     @State private var accumulateTimer: AccumulateTimer = .init()
     var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
+    var onStateChange: ((_ state: PlayerState) -> Void)?
     
     public init(@ViewBuilder controls: @escaping (_ playerModel: PlayerModel) -> C,
                 prepare: ((_ playerLayer: AVPlayerLayer) -> Void)? = nil,
-                onTimeChange: ((CMTime) -> Void)? = nil) {
+                onTimeChange: ((CMTime) -> Void)? = nil,
+                onStateChange: ((_ state: PlayerState) -> Void)? = nil) {
         self.controls = controls
         self.prepare = prepare
         self.onTimeChange = onTimeChange
+        self.onStateChange = onStateChange
     }
     
     public var body: some View {
@@ -41,6 +44,9 @@ public struct CustomPlayerView<C>: View where C: View {
             .onReceive(playerModel.$currentTime, perform: { newValue in
                 guard let newValue else { return }
                 onTimeChange?(newValue)
+            })
+            .onReceive(playerModel.$state, perform: { newValue in
+                onStateChange?(newValue)
             })
             .onChange(of: isShowingControls, perform: { newValue in
                 if newValue { scheduleDismissControls() }

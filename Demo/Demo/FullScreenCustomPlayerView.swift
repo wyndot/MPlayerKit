@@ -48,6 +48,8 @@ struct FullScreenCustomPlayerView: View {
             logger.debug("prepareCustomPlayerView: \(String(describing: playerLayer))")
         }, onTimeChange: { time in
             logger.debug("onTimeChange: \(String(describing: time))")
+        }, onStateChange: { state in
+            logger.debug("onStateChange: \(String(describing: state))")
         })
     }
 }

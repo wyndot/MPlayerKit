@@ -7,6 +7,9 @@
 import SwiftUI
 import Combine
 import AVKit
+import os
+
+private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerFullScreenPresenter")
 
 public struct SystemPlayerFullScreenPresenter: ViewModifier {
     @Environment(\.playerModel) private var playerModel
@@ -14,6 +17,7 @@ public struct SystemPlayerFullScreenPresenter: ViewModifier {
     @State private var autoplay: Bool = false
     var prepare: ((_ controller: AVPlayerViewController) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
+    var onStateChange: ((_ state: PlayerState) -> Void)?
     
     public func body(content: Content) -> some View {
         content
@@ -23,12 +27,16 @@ public struct SystemPlayerFullScreenPresenter: ViewModifier {
                 ZStack {
                     Color.black.ignoresSafeArea(.all)
                     
-                    SystemPlayerView(prepare: prepare, onTimeChange: onTimeChange)
+                    SystemPlayerView(prepare: prepare,
+                                     onTimeChange: onTimeChange,
+                                     onStateChange: onStateChange)
                         .ignoresSafeArea(.all)
                         .onAppear {
+                            logger.debug("onStateChange: Stated")
                             if autoplay { playerModel.play() }
                         }
                         .onDisappear {
+                            logger.debug("onStateChange: Ended")
                             playerModel.pause()
                         }
                 }
@@ -47,7 +55,10 @@ public struct SystemPlayerFullScreenPresenter: ViewModifier {
 
 extension View {
     public func systemPlayerFullScreenPresenter(prepare: ((_ playerController: AVPlayerViewController) -> Void)? = nil,
-                                             onTimeChange: ((_ time: CMTime) -> Void)? = nil) -> some View {
-        modifier(SystemPlayerFullScreenPresenter(prepare: prepare, onTimeChange: onTimeChange))
+                                             onTimeChange: ((_ time: CMTime) -> Void)? = nil,
+                                                onStateChange: ((_ state: PlayerState) -> Void)? = nil) -> some View {
+        modifier(SystemPlayerFullScreenPresenter(prepare: prepare,
+                                                 onTimeChange: onTimeChange,
+                                                 onStateChange: onStateChange))
     }
 }
