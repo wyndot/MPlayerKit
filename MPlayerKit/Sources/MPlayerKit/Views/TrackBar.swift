@@ -15,8 +15,8 @@ enum TrackState: Equatable {
 struct TrackBar: View {
     @Binding var value: Double
     @Binding var state: TrackState
-    let maxHeight: CGFloat = 40
-    let barHeight: CGFloat = 10
+    let maxHeight: CGFloat = 24
+    let barHeight: CGFloat = 12
 #if os(tvOS)
     @FocusState private var isFocused: Bool
 #endif

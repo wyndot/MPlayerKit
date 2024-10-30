@@ -57,10 +57,10 @@ struct CustomControlsView: View {
         GeometryReader { geometry in
             ZStack(alignment: .center) {
                 let halfHeight = geometry.size.height / 2.0
-                let top = halfHeight - safeAreaInsets.top
-                let bottom = halfHeight - safeAreaInsets.bottom
-                let leading = CGFloat(safeAreaInsets.left)
-                let trailing = CGFloat(safeAreaInsets.right)
+                let top = halfHeight - safeAreaInsets.top - 10
+                let bottom = halfHeight - safeAreaInsets.bottom - 10
+                let leading = CGFloat(safeAreaInsets.left) + 10
+                let trailing = CGFloat(safeAreaInsets.right) + 10
                 Color.black.opacity(0.6).edgesIgnoringSafeArea(.all)
                 topbar
                     .padding(.leading, leading)
@@ -76,7 +76,7 @@ struct CustomControlsView: View {
                         d[VerticalAlignment.center]
                     })
                 
-                VStack(alignment: .center, spacing: 0) {
+                VStack(alignment: .center, spacing: 4) {
                     playbackInfoBar
                     bottombar
                 }
@@ -130,7 +130,9 @@ struct CustomControlsView: View {
             VolumeSlider()
             Spacer()
             #endif
-            pipButton
+            if isPiPPossible {
+                pipButton
+            }
             airplayButton
         }
         .frame(maxWidth: .infinity)
@@ -163,6 +165,12 @@ struct CustomControlsView: View {
     
     var playbackInfoBar: some View {
         ZStack(alignment: .bottom) {
+            VStack(alignment: .leading) {
+                Text(playerModel.currentItem?.title ?? "")
+                    .font(.title)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             PlaybackPreviewView(trackingState: $trackingState)
 #if os(iOS)
                 .frame(maxWidth: .infinity, maxHeight: 100)
@@ -184,7 +192,7 @@ struct CustomControlsView: View {
                         Image(systemName: "ellipsis.circle")
                             .resizable()
                     }
-                    .buttonStyle(.smallIcon)
+                    .buttonStyle(.xsmallIcon)
 #if os(tvOS)
                     .focused($focusState, equals: .options)
 #endif
@@ -376,7 +384,7 @@ struct CustomControlsView: View {
         #if os(tvOS)
         120
         #else
-        20
+        60
         #endif
     }
     
