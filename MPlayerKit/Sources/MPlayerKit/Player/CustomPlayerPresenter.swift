@@ -1,17 +1,20 @@
 //
-//  PlayerPresenter.swift
+//  File.swift
 //  MPlayerKit
 //
-//  Created by Michael Zhang on 10/24/24.
+//  Created by Michael Zhang on 10/30/24.
 //
 import SwiftUI
 import Combine
+import AVKit
 
-public struct PlayerFullScreenPresenter: ViewModifier {
+public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
     @Environment(\.playerModel) private var playerModel
     @State private var isPresented: Bool = false
     @State private var autoplay: Bool = false
-    let controlsStyle: PlayerControlsStyle
+    @ViewBuilder var constomControls: (_ playerModel: PlayerModel) -> C
+    var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
+    var onTimeChange: ((CMTime) -> Void)?
     
     public func body(content: Content) -> some View {
         content
@@ -20,18 +23,16 @@ public struct PlayerFullScreenPresenter: ViewModifier {
             }) {
                 ZStack {
                     Color.black.ignoresSafeArea(.all)
-                    PlayerView(controlsStyle: controlsStyle)
+                    
+                    CustomPlayerView(controls: constomControls, prepare: prepare, onTimeChange: onTimeChange)
                         .ignoresSafeArea(.all)
                         .onAppear {
-                            if autoplay {
-                                playerModel.play()
-                            }
+                            if autoplay { playerModel.play() }
                         }
                         .onDisappear {
                             playerModel.pause()
                         }
                 }
-                
             }
             .onReceive(playerModel.$presentation, perform: { newPresentation in
                 if case .fullscreen(let autoplay) = newPresentation {
@@ -46,7 +47,9 @@ public struct PlayerFullScreenPresenter: ViewModifier {
 }
 
 extension View {
-    public func playerFullScreenPresenter(controlsStyle: PlayerControlsStyle = .system) -> some View {
-        modifier(PlayerFullScreenPresenter(controlsStyle: controlsStyle))
+    public func customPlayerFullScreenPresenter<C>(customControls: @escaping (_ playerModel: PlayerModel) -> C,
+                                                   prepare: ((_ playerLayer: AVPlayerLayer) -> Void)? = nil,
+                                                   onTimeChange: ((_ time: CMTime) -> Void)? = nil) -> some View where C: View {
+        modifier(CustomPlayerFullScreenPresenter(constomControls: customControls, prepare: prepare, onTimeChange: onTimeChange))
     }
 }

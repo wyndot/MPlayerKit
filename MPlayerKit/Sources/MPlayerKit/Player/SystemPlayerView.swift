@@ -6,19 +6,26 @@
 //
 import SwiftUI
 import AVKit
+import Combine
 import os
 
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
 @MainActor
-struct SystemPlayerView: UIViewControllerRepresentable {
+public struct SystemPlayerView: UIViewControllerRepresentable {
     @Environment(\.playerModel) private var playerModel
+    var prepare: ((_ controller: AVPlayerViewController) -> Void)?
+    var onTimeChange: ((_ time: CMTime) -> Void)?
+
+    public init(prepare: ((_: AVPlayerViewController) -> Void)? = nil, onTimeChange: ((_: CMTime) -> Void)? = nil) {
+        self.prepare = prepare
+        self.onTimeChange = onTimeChange
+    }
     
-    init() { }
-    
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
+    public func makeUIViewController(context: Context) -> AVPlayerViewController {
         let playerViewController = AVPlayerViewController()
         playerViewController.player = playerModel.player
+        prepare?(playerViewController)
         #if os(iOS)
         playerViewController.entersFullScreenWhenPlaybackBegins = false
         #endif
@@ -27,27 +34,33 @@ struct SystemPlayerView: UIViewControllerRepresentable {
         return playerViewController
     }
     
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+    public func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         logger.log("updateUIViewController")
     }
     
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
     
     @MainActor
-    class Coordinator: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
+    public class Coordinator: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
         let parent: SystemPlayerView
+        var cancellables: Set<AnyCancellable> = []
         
         init(parent: SystemPlayerView) {
             self.parent = parent
+            super.init()
+            parent.playerModel.$currentTime.sink(receiveValue: { [weak self ] time in
+                guard let time else { return }
+                parent.onTimeChange?(time)
+            }).store(in: &cancellables)
         }
         #if os(iOS)
-        func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
+        public func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
             logger.log("player will begin full screen presentation")
         }
         
-        func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
+        public func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
             logger.log("player will end full screen presentation")
             parent.playerModel.presentation = .inline
         }

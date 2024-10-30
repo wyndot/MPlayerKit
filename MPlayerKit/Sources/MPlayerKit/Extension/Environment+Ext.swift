@@ -35,15 +35,3 @@ public extension EnvironmentValues {
         }
     }
 }
-
-public struct SafeAreaInsetsKey: @preconcurrency EnvironmentKey {
-    @MainActor public static var defaultValue: UIEdgeInsets {
-        UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap({ $0.windows }).first(where: { $0.isKeyWindow })?.safeAreaInsets ?? .zero
-    }
-}
-
-public extension EnvironmentValues {
-    @MainActor var safeAreaInsets: UIEdgeInsets {
-        self[SafeAreaInsetsKey.self]
-    }
-}

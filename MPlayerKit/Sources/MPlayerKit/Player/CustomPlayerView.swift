@@ -6,11 +6,12 @@
 //
 
 import SwiftUI
+import AVKit
 import os
 
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
-struct CustomPlayerView<C>: View where C: View {
+public struct CustomPlayerView<C>: View where C: View {
 #if os(tvOS)
     enum PlayerFocusState {
         case player
@@ -24,9 +25,23 @@ struct CustomPlayerView<C>: View where C: View {
     @ViewBuilder var controls: (_ playerModel: PlayerModel) -> C
     @State private var isShowingControls: Bool = false
     @State private var accumulateTimer: AccumulateTimer = .init()
+    var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
+    var onTimeChange: ((CMTime) -> Void)?
     
-    var body: some View {
+    public init(@ViewBuilder controls: @escaping (_ playerModel: PlayerModel) -> C,
+                prepare: ((_ playerLayer: AVPlayerLayer) -> Void)? = nil,
+                onTimeChange: ((CMTime) -> Void)? = nil) {
+        self.controls = controls
+        self.prepare = prepare
+        self.onTimeChange = onTimeChange
+    }
+    
+    public var body: some View {
         content
+            .onReceive(playerModel.$currentTime, perform: { newValue in
+                guard let newValue else { return }
+                onTimeChange?(newValue)
+            })
             .onChange(of: isShowingControls, perform: { newValue in
                 if newValue { scheduleDismissControls() }
             })
@@ -35,7 +50,7 @@ struct CustomPlayerView<C>: View where C: View {
 #if os(iOS)
     private var content: some View {
         ZStack {
-            VideoRenderView()
+            VideoRenderView(prepare: { prepare?($0) })
                 .zIndex(0)
                 .gesture(
                     TapGesture(count: 1)

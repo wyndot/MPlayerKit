@@ -12,7 +12,7 @@ import AVFoundation
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
 @MainActor
-struct CustomControlsView: View {
+public struct CustomControlsView: View {
 #if os(tvOS)
     enum ControlsFocusState: Hashable {
         case close
@@ -27,7 +27,7 @@ struct CustomControlsView: View {
     @FocusState private var focusState: ControlsFocusState?
 #endif
     @Environment(\.playerModel) private var playerModel
-    @Environment(\.safeAreaInsets) private var safeAreaInsets
+    @State private var safeAreaInsets: UIEdgeInsets = .zero
     @State private var presentation: PlayerPresentation = .none
     @State private var playerState: PlayerState = .paused(reason: .userInitiated)
     @State private var trackingState: TrackState = .idle
@@ -39,7 +39,9 @@ struct CustomControlsView: View {
     @State private var isPiPActive: Bool = false
     @State private var isPiPPossible: Bool = false
     
-    var body: some View {
+    public init() { }
+    
+    public var body: some View {
         if #available(iOS 16.0, macOS 13.0, tvOS 16.0, *) {
             content
                 .onChange(of: playerModel.player.defaultRate, perform: { newRate in
@@ -56,7 +58,7 @@ struct CustomControlsView: View {
     /**
      * The content of the custom controls
      */
-    var content: some View {
+    private var content: some View {
         GeometryReader { geometry in
             ZStack(alignment: .center) {
                 let halfHeight = geometry.size.height / 2.0
@@ -91,6 +93,11 @@ struct CustomControlsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(
+            SafeAreaInsetsView { insets in
+                self.safeAreaInsets = insets
+            }
+        )
 #if os(tvOS)
         .focusScope(controlsNamespace)
         .onAppear {
@@ -127,7 +134,7 @@ struct CustomControlsView: View {
      * The top bar. It includes the close button if this is presented on fullscreen, volume slider,
      * and the casting buttons which includes the PiP button and AirPlay button
      */
-    var topbar: some View {
+    private var topbar: some View {
         HStack(alignment: .center, spacing: topBarSpacing) {
             if case .fullscreen(_) = presentation {
                 closeButton
@@ -151,7 +158,7 @@ struct CustomControlsView: View {
     /**
      * The middle bar. It contains the skip backward button, play or pause button and skip forward button
      */
-    var middlebar: some View {
+    private var middlebar: some View {
         HStack(alignment: .center, spacing: middleBarSpacing) {
             skipBackwardButton
             playPauseButton
@@ -166,7 +173,7 @@ struct CustomControlsView: View {
     /**
      * The bottom bar. It contains the playback time track bar
      */
-    var bottombar: some View {
+    private var bottombar: some View {
         HStack(alignment: .center, spacing: 0) {
             PlaybackTimeBar(trackingState: $trackingState)
         }

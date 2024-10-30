@@ -10,11 +10,13 @@ import SwiftUI
 
 struct VideoRenderView: UIViewRepresentable {
     @Environment(\.playerModel) private var playerModel
+    var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     
     func makeUIView(context: Context) -> some UIView {
         let videoView = UIVideoView()
         videoView.player = playerModel.player
         playerModel.createPIPController(videoView.playerLayer)
+        prepare?(videoView.playerLayer)
         return videoView
     }
     
