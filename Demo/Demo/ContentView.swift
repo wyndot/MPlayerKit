@@ -11,6 +11,7 @@ import AVKit
 
 struct VOD: Playable {
     var title: String
+    var subtitle: String?
     var synopsis: String?
     var poster: MPlayerKit.Artwork?
     var asset: URL
@@ -24,6 +25,7 @@ struct VOD: Playable {
 }
 
 private let vod: VOD = .init(title: "Sintel",
+                             subtitle: "Open Movie from Blender Foundation",
                              synopsis: "Sintel is an open movie from the Blender Foundation licensed under the Creative Commons Attribution 3.0 license.",
                              poster: .init(url: URL(string: "https://media-io.s3.us-west-1.amazonaws.com/Poster.jpg")!),
                              asset: URL(string: "https://media-io.s3.us-west-1.amazonaws.com/sintel/playlist.m3u8")!,

@@ -28,6 +28,7 @@ public enum MediaType: Sendable {
 
 public protocol Playable: Hashable, Sendable {
     var title: String { get }               // The title of the media asset
+    var subtitle: String? { get }           // The subtitle of the media asset
     var synopsis: String? { get }           // The synopsis of the media asset
     var poster: Artwork? { get }            // The poster artwork, can be portait or landscape
     var asset: URL { get }                  // The main media asset with full size
@@ -37,7 +38,7 @@ public protocol Playable: Hashable, Sendable {
     var contentRating: String? { get }      // The content rating
     var genres: [String]? { get }           // The genres of content
     
-    func extraExternalMetadata() -> [AVMetadataItem] // return empty array if there is no extra metadata need to be added
+    func extraExternalMetadata() -> [AVMetadataItem] // Return empty array if there is no extra metadata need to be added
 }
 
 extension Playable {

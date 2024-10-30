@@ -36,6 +36,7 @@ struct PlaybackPreviewView: View {
     func previewSize(geometry: GeometryProxy) -> CGSize {
         .init(width: playerPreviewModel.aspectRatio * geometry.size.height, height: geometry.size.height)
     }
+    
     func offset(geometrySize: CGSize, previewSize: CGSize, progress: Double) -> CGPoint {
         let position = geometrySize.width * progress - previewSize.width / 2.0
         let upperBound = geometrySize.width - previewSize.width

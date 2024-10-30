@@ -53,6 +53,9 @@ struct VolumeSlider: View {
         }
     }
     
+    /**
+     * The volume button 
+     */
     var volumeButton: some View {
         Button(action: {
             switch (isMuted, isShowingVolumeBar) {
@@ -79,6 +82,9 @@ struct VolumeSlider: View {
         .buttonStyle(.xsmallIcon)
     }
     
+    /**
+     * The button image based on the state of volume
+     */
     var image: some View {
         if isMuted {
             return Image(systemName: "speaker.slash.fill").resizable()
@@ -91,6 +97,9 @@ struct VolumeSlider: View {
         }
     }
     
+    /**
+     * Schedule an accumulate timer to dismiss the volume bar
+     */
     func scheduleDismissal() {
         Task { @MainActor in
             await accumulateTimer.schedule(action: "dimiss", timeInterval: 5.0, perform: {
@@ -101,6 +110,9 @@ struct VolumeSlider: View {
         }
     }
     
+    /**
+     * Toggle the volume bar
+     */
     func toggleVolumeBar(_ visible: Bool) {
         self.isShowingVolumeBar = visible
     }

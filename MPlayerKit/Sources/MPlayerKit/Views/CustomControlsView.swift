@@ -53,6 +53,9 @@ struct CustomControlsView: View {
         }
     }
     
+    /**
+     * The content of the custom controls
+     */
     var content: some View {
         GeometryReader { geometry in
             ZStack(alignment: .center) {
@@ -120,6 +123,10 @@ struct CustomControlsView: View {
         })
     }
     
+    /**
+     * The top bar. It includes the close button if this is presented on fullscreen, volume slider,
+     * and the casting buttons which includes the PiP button and AirPlay button
+     */
     var topbar: some View {
         HStack(alignment: .center, spacing: topBarSpacing) {
             if case .fullscreen(_) = presentation {
@@ -141,6 +148,9 @@ struct CustomControlsView: View {
 #endif
     }
     
+    /**
+     * The middle bar. It contains the skip backward button, play or pause button and skip forward button
+     */
     var middlebar: some View {
         HStack(alignment: .center, spacing: middleBarSpacing) {
             skipBackwardButton
@@ -153,6 +163,9 @@ struct CustomControlsView: View {
 #endif
     }
     
+    /**
+     * The bottom bar. It contains the playback time track bar
+     */
     var bottombar: some View {
         HStack(alignment: .center, spacing: 0) {
             PlaybackTimeBar(trackingState: $trackingState)
@@ -163,14 +176,12 @@ struct CustomControlsView: View {
 #endif
     }
     
-    var playbackInfoBar: some View {
+    /**
+     * The playback info bar showing above the time track bar. It includes the playback title, subtitle and preview.
+     */
+    private var playbackInfoBar: some View {
         ZStack(alignment: .bottom) {
-            VStack(alignment: .leading) {
-                Text(playerModel.currentItem?.title ?? "")
-                    .font(.title)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            playbackInfoTitles
             PlaybackPreviewView(trackingState: $trackingState)
 #if os(iOS)
                 .frame(maxWidth: .infinity, maxHeight: 100)
@@ -201,8 +212,25 @@ struct CustomControlsView: View {
         }
     }
     
+    /**
+     * The playback title and subtitle showing above the time track bar
+     */
+    private var playbackInfoTitles: some View {
+        VStack(alignment: .leading) {
+            Text(playerModel.currentItem?.subtitle ?? "")
+                .font(.subheadline)
+            Text(playerModel.currentItem?.title ?? "")
+                .font(.title)
+        }
+        .foregroundStyle(Color.accentColor)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    /**
+     * The play rate menu item
+     */
     @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
-    var playRatesMenu: some View {
+    private var playRatesMenu: some View {
         Menu(content: {
             ForEach([0.5, 1.0, 1.5, 2.0, 2.5], id: \.self) { rate in
                 Button(action: {
@@ -237,8 +265,11 @@ struct CustomControlsView: View {
         })
     }
     
+    /**
+     * The subtitle menu item
+     */
     @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
-    func subtitlesMenu(options: [AVMediaSelectionOption]) -> some View {
+    private func subtitlesMenu(options: [AVMediaSelectionOption]) -> some View {
         Menu(content: {
             ForEach(options, id:\.self) { subtitle in
                 Button(action: {
@@ -260,8 +291,11 @@ struct CustomControlsView: View {
         })
     }
     
+    /**
+     * The audio menu item
+     */
     @available(iOS 14.0, macOS 13.0, tvOS 17.0, *)
-    func audioMenu(options: [AVMediaSelectionOption]) -> some View {
+    private func audioMenu(options: [AVMediaSelectionOption]) -> some View {
         Menu(content: {
             ForEach(options, id:\.self) { audio in
                 Button(action: {
@@ -283,7 +317,10 @@ struct CustomControlsView: View {
         })
     }
     
-    var closeButton: some View {
+    /**
+     * The close button to dismiss the fullscreen presentation
+     */
+    private var closeButton: some View {
         Button(action: {
             playerModel.presentation = .none
         }, label: {
@@ -296,7 +333,10 @@ struct CustomControlsView: View {
 #endif
     }
     
-    var skipBackwardButton: some View {
+    /**
+     * The playback skip backward button
+     */
+    private var skipBackwardButton: some View {
         Button(action: {
             playerModel.skip(-10)
         }, label: {
@@ -309,7 +349,10 @@ struct CustomControlsView: View {
 #endif
     }
     
-    var skipForwardButton: some View {
+    /**
+     * The playback skip forward button
+     */
+    private var skipForwardButton: some View {
         Button(action: {
             playerModel.skip(10)
         }, label: {
@@ -321,8 +364,10 @@ struct CustomControlsView: View {
         .focused($focusState, equals: .skipForward)
 #endif
     }
-    
-    var playPauseButton: some View {
+    /**
+     * The playback play or pause button
+     */
+    private var playPauseButton: some View {
         Button(action: {
             if case .playing = playerState {
                 playerModel.pause()
@@ -345,7 +390,10 @@ struct CustomControlsView: View {
 #endif
     }
     
-    var pipButton: some View {
+    /**
+     * The PiP toggle button
+     */
+    private var pipButton: some View {
         Button(action: {
             playerModel.togglePiP()
         }, label: {
@@ -361,18 +409,26 @@ struct CustomControlsView: View {
 #endif
     }
     
-    var airplayButton: some View {
+    /**
+     * The AirPlay button
+     */
+    private var airplayButton: some View {
         AirPlayPickerView()
             .frame(width: airplayButtonSize, height: airplayButtonSize)
     }
-            
-    var rateFormatter: NumberFormatter {
+    /**
+     * The formatter for the playback rate in the rate menu item
+     */
+    private var rateFormatter: NumberFormatter {
         let formatter = NumberFormatter()
         formatter.maximumFractionDigits = 1
         formatter.minimumFractionDigits = 1
         return formatter
     }
     
+    /**
+     * The spacing between the buttons in the top bar
+     */
     var topBarSpacing: CGFloat {
 #if os(tvOS)
         40
@@ -380,6 +436,10 @@ struct CustomControlsView: View {
         10
 #endif
     }
+    
+    /**
+     * The spacing between the buttons in the middle bar
+     */
     var middleBarSpacing: CGFloat {
         #if os(tvOS)
         120
@@ -388,6 +448,9 @@ struct CustomControlsView: View {
         #endif
     }
     
+    /**
+     * The PiP button size
+     */
     var pipButtonSize: CGFloat {
 #if os(tvOS)
         82
@@ -396,6 +459,9 @@ struct CustomControlsView: View {
 #endif
     }
     
+    /**
+     * The AirPlay button size
+     */
     var airplayButtonSize: CGFloat {
 #if os(tvOS)
         50

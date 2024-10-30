@@ -371,6 +371,7 @@ extension PlayerModel {
     private func externalMetadata(for playable: any Playable) async -> [AVMetadataItem] {
         var mapping: [AVMetadataIdentifier: Any?] = [
             .commonIdentifierTitle: playable.title,
+            .iTunesMetadataTrackSubTitle: playable.subtitle,
             .commonIdentifierDescription: playable.synopsis,
             .commonIdentifierCreationDate: playable.releaseYear,
             .iTunesMetadataContentRating: playable.contentRating,

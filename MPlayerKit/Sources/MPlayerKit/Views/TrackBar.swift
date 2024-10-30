@@ -69,6 +69,11 @@ struct TrackBar: View {
 #endif
     }
     
+    /**
+     * The track bar
+     * - Parameters:
+     *  - geometry: The geometry proxy from the container. Need it to calculate the progress bar width
+     */
     func track(geometry: GeometryProxy) -> some View {
         ZStack(alignment: .leading) {
             Rectangle()
@@ -86,6 +91,9 @@ struct TrackBar: View {
         }
     }
     
+    /**
+     * The background track bar
+     */
     var trackBar: some View {
         Rectangle()
             .foregroundStyle(.secondary)
@@ -94,6 +102,9 @@ struct TrackBar: View {
         
     }
     
+    /**
+     * The bar showing the progress
+     */
     func progressBar(geometry: GeometryProxy) -> some View {
         Rectangle()
         #if os(iOS)
@@ -106,6 +117,9 @@ struct TrackBar: View {
             .frame(width: CGFloat(trackingValue) * geometry.size.width)
     }
     
+    /**
+     * The tracking progress value
+     */
     var trackingValue: Double {
         switch state {
             case .ended(value: let value): return value
