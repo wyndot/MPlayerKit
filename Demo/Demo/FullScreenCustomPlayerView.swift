@@ -42,7 +42,7 @@ struct FullScreenCustomPlayerView: View {
             })
         }
         .padding()
-        .customPlayerFullScreenPresenter(customControls: { _ in
+        .customPlayerFullScreenPresenter(controls: { _ in
             CustomControlsView()        // You can provide your own controls view here 
         }, prepare: { playerLayer in
             logger.debug("prepareCustomPlayerView: \(String(describing: playerLayer))")

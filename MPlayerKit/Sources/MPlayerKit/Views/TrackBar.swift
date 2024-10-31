@@ -6,13 +6,13 @@
 //
 import SwiftUI
 
-enum TrackState: Equatable {
+public enum TrackState: Equatable {
     case idle
     case tracking(value: Double)
     case ended(value: Double)
 }
 
-struct TrackBar: View {
+public struct TrackBar: View {
     @Binding var value: Double
     @Binding var state: TrackState
     let maxHeight: CGFloat = 24
@@ -21,7 +21,7 @@ struct TrackBar: View {
     @FocusState private var isFocused: Bool
 #endif
     
-    var body: some View {
+    public var body: some View {
 #if os(iOS)
         GeometryReader { geometry in
             track(geometry: geometry)

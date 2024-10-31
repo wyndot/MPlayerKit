@@ -8,11 +8,11 @@
 import AVKit
 import SwiftUI
 
-struct VideoRenderView: UIViewRepresentable {
+public struct VideoRenderView: UIViewRepresentable {
     @Environment(\.playerModel) private var playerModel
     var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     
-    func makeUIView(context: Context) -> some UIView {
+    public func makeUIView(context: Context) -> some UIView {
         let videoView = UIVideoView()
         videoView.player = playerModel.player
         playerModel.createPIPController(videoView.playerLayer)
@@ -20,10 +20,10 @@ struct VideoRenderView: UIViewRepresentable {
         return videoView
     }
     
-    func updateUIView(_ uiView: UIViewType, context: Context) { }
+    public func updateUIView(_ uiView: UIViewType, context: Context) { }
 }
 
-private class UIVideoView: UIView {
+class UIVideoView: UIView {
     class override var layerClass: AnyClass { AVPlayerLayer.self }
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
     var player: AVPlayer? {

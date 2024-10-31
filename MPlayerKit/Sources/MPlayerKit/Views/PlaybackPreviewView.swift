@@ -7,10 +7,10 @@
 import SwiftUI
 import AVFoundation
 
-struct PlaybackPreviewView: View {
+public struct PlaybackPreviewView: View {
     @Environment(\.playerPreviewModel) private var playerPreviewModel
     @Binding var trackingState: TrackState
-    var body: some View {
+    public var body: some View {
         GeometryReader { geometry in
             let previewSize = previewSize(geometry: geometry)
             let geometrySize = geometry.size
@@ -18,7 +18,7 @@ struct PlaybackPreviewView: View {
                 switch trackingState {
                     case .tracking(value: let value):
                         let offset = offset(geometrySize: geometrySize, previewSize: previewSize, progress: value)
-                        VideoRenderView()
+                        PreviewRenderView()
                             .frame(maxWidth: previewSize.width, maxHeight: previewSize.height)
                             .offset(x: offset.x, y: offset.y)
                     default:
@@ -33,15 +33,14 @@ struct PlaybackPreviewView: View {
         })
     }
       
-    func previewSize(geometry: GeometryProxy) -> CGSize {
+    public func previewSize(geometry: GeometryProxy) -> CGSize {
         .init(width: playerPreviewModel.aspectRatio * geometry.size.height, height: geometry.size.height)
     }
     
-    func offset(geometrySize: CGSize, previewSize: CGSize, progress: Double) -> CGPoint {
+    public func offset(geometrySize: CGSize, previewSize: CGSize, progress: Double) -> CGPoint {
         let position = geometrySize.width * progress - previewSize.width / 2.0
         let upperBound = geometrySize.width - previewSize.width
         let x = min(max(position, 0.0), upperBound)
         return CGPoint(x: x, y: 0.0)
     }
-                                
 }
