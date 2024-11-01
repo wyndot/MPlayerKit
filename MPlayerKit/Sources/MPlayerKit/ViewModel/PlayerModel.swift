@@ -42,7 +42,7 @@ public enum PlayerBufferingReason {
 public enum PlayerPresentation: Equatable {
     case none
     case fullscreen(autoplay: Bool)
-    case inline
+    case inline(autoplay: Bool)
 }
 
 public enum PlayerError: Error {
@@ -94,7 +94,7 @@ public class PlayerModel {
     private var playerPeriodicTimeObservationToken: Any?
     
     public init() {
-        logger.debug("\(Self.self) Initialized")
+        logger.info("\(Self.self) Initialized")
         #if os(iOS)
         nowPlayingSession.active(player: player)
         #endif
@@ -105,7 +105,7 @@ public class PlayerModel {
         Task { @MainActor [weak self] in
             self?.stopObservingPlayback()
         }
-        logger.debug("\(Self.self) Deinitialized")
+        logger.info("\(Self.self) Deinitialized")
     }
     
     /**
@@ -162,7 +162,7 @@ extension PlayerModel {
      * Start observing playback. This is including observing the player time control status, player did play to the end, audio session interruption, and the periodic time observation
      */
     private func startObservingPlayback() {
-        logger.debug("Starting observation of player")
+        logger.info("\(Self.self) Starting observation of player")
         startObservingPlayerTimeControlStatus()
         startObservingPlayerPlayToEndTime()
         startObservingPlayerPeriodicTime()
@@ -181,7 +181,7 @@ extension PlayerModel {
         #if !os(macOS)
         playerAudioInterruptionObservationTask?.cancel()
         #endif
-        logger.debug("Stopped observation of player")
+        logger.info("\(Self.self) Stopped observation of player")
     }
     
     /**

@@ -30,28 +30,20 @@ struct FullScreenSystemPlayerView: View {
                 }
             }, label: {
                 AsyncImage(url: vod.poster?.landscapeUrl) { phase in
-                    switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                        default:
-                            Color.gray
-                    }
+                    phase.image?.resizable().aspectRatio(contentMode: .fit)
                 }
                 .frame(width: 200, height: 300)
             })
         }
-        .padding()
         .systemPlayerFullScreenPresenter(prepare: { avPlayerViewController in
-            logger.debug("prepareCustomPlayerView: \(String(describing: avPlayerViewController))")
+            logger.info("prepareCustomPlayerView: \(String(describing: avPlayerViewController))")
 #if os(tvOS)
             setupAVPlayerViewController(avPlayerViewController)
 #endif
         }, onTimeChange: { time in
-            logger.debug("onTimeChange: \(String(describing: time))")
+            logger.info("onTimeChange: \(String(describing: time))")
         }, onStateChange: { state in
-            logger.debug("onStateChange: \(String(describing: state))")
+            logger.info("onStateChange: \(String(describing: state))")
         })
     }
     

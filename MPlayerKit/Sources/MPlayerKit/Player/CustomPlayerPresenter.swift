@@ -14,7 +14,6 @@ private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "Custo
 public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
     @Environment(\.playerModel) private var playerModel
     @State private var isPresented: Bool = false
-    @State private var autoplay: Bool = false
     @ViewBuilder var controls: (_ playerModel: PlayerModel) -> C
     var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
@@ -27,29 +26,19 @@ public struct CustomPlayerFullScreenPresenter<C>: ViewModifier where C: View {
             }) {
                 ZStack {
                     Color.black.ignoresSafeArea(.all)
-                    
                     CustomPlayerView(controls: controls,
+                                     presentation: playerModel.presentation,
                                      prepare: prepare,
                                      onTimeChange: onTimeChange,
                                      onStateChange: onStateChange)
                         .ignoresSafeArea(.all)
-                        .onAppear {
-                            logger.debug("onStateChange: Stated")
-                            if autoplay { playerModel.play() }
-                        }
-                        .onDisappear {
-                            logger.debug("onStateChange: Ended")
-                            playerModel.pause()
-                        }
                 }
             }
             .onReceive(playerModel.$presentation, perform: { newPresentation in
-                if case .fullscreen(let autoplay) = newPresentation {
+                if case .fullscreen(_) = newPresentation {
                     isPresented = true
-                    self.autoplay = autoplay
                 } else {
                     isPresented = false
-                    self.autoplay = false
                 }
             })
     }

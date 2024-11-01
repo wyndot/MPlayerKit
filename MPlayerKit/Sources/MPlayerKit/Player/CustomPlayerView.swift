@@ -25,15 +25,18 @@ public struct CustomPlayerView<C>: View where C: View {
     @ViewBuilder var controls: (_ playerModel: PlayerModel) -> C
     @State private var isShowingControls: Bool = false
     @State private var accumulateTimer: AccumulateTimer = .init()
+    let presentation: PlayerPresentation
     var prepare: ((_ playerLayer: AVPlayerLayer) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
     var onStateChange: ((_ state: PlayerState) -> Void)?
     
     public init(@ViewBuilder controls: @escaping (_ playerModel: PlayerModel) -> C,
+                presentation: PlayerPresentation = .inline(autoplay: true),
                 prepare: ((_ playerLayer: AVPlayerLayer) -> Void)? = nil,
                 onTimeChange: ((CMTime) -> Void)? = nil,
                 onStateChange: ((_ state: PlayerState) -> Void)? = nil) {
         self.controls = controls
+        self.presentation = presentation
         self.prepare = prepare
         self.onTimeChange = onTimeChange
         self.onStateChange = onStateChange
@@ -51,6 +54,20 @@ public struct CustomPlayerView<C>: View where C: View {
             .onChange(of: isShowingControls, perform: { newValue in
                 if newValue { scheduleDismissControls() }
             })
+            .onAppear {
+                logger.info("\(Self.self) onAppear")
+                playerModel.presentation = presentation
+                switch presentation {
+                    case .fullscreen(autoplay: let autoplay) where autoplay,
+                            .inline(autoplay: let autoplay) where autoplay :
+                        playerModel.play()
+                    default: break
+                }
+            }
+            .onDisappear {
+                playerModel.pause()
+                logger.info("\(Self.self) onDisappear")
+            }
     }
     
 #if os(iOS)

@@ -21,12 +21,12 @@ struct InlineCustomPlayerView: View {
             Color.black.ignoresSafeArea(.all)
             CustomPlayerView(controls: { _ in
                 CustomControlsView()             // You can provide your own controls view here
-            }, prepare: { playerLayer in
-                logger.debug("prepareCustomPlayerView: \(String(describing: playerLayer))")
+            }, presentation: .inline(autoplay: true), prepare: { playerLayer in
+                logger.info("prepareCustomPlayerView: \(String(describing: playerLayer))")
             }, onTimeChange: { time in
-                logger.debug("onTimeChange: \(String(describing: time))")
+                logger.info("onTimeChange: \(String(describing: time))")
             }, onStateChange: { state in
-                logger.debug("onStateChange: \(String(describing: state))")
+                logger.info("onStateChange: \(String(describing: state))")
             })
                 .ignoresSafeArea(.all)
                 .task {
@@ -34,14 +34,6 @@ struct InlineCustomPlayerView: View {
                     Task {
                         await playerPreviewModel.load(vod)
                     }
-                }
-                .onAppear {
-                    logger.debug("onStateChange: Started")
-                    playerModel.play()
-                }
-                .onDisappear {
-                    logger.debug("onStateChange: Ended")
-                    playerModel.pause()
                 }
         }
     }

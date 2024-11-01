@@ -15,8 +15,8 @@ block-beta
         e["CustomPlayerView"] f["CustomPlayerPresenter"]
     end
 ```
-### PlayModel
-**PlayerModel** is a global environment variable definded with name **playerModel**. It can be accessed from any where in the view hierarchy with the following code snippet.
+### PlayerModel
+**PlayerModel** is a global environment variable definded with keypath name **playerModel**. It can be accessed from anywhere in the view hierarchy with the following code snippet.
 ```
 struct YourView: View { 
     @Environment(\.playerModel) private var playerModel
@@ -24,16 +24,15 @@ struct YourView: View {
 }
 ```  
 The responsibilities of the **PlayerModel** is following: 
-* Load video asset into **AVPlayer**
+* Manage the **AVPlayer** like loading, play, pause or seek the video asset
 * Monitor and publish (via **Combine**) the state of **AVPLayer** 
-* Play, Pause and Seek the **AVPlayer**
 * Handle the audio session of the playback including the interruption 
 * Publish the Media Player Now Playing Metadata
-* Handle the selection of video asset's **subtitle** and **andio**
+* Handle the selection of video asset's **subtitle** and **audio**
 
 The states of the **AVPLayer** client can subscribe to are following: 
-* player state (playing, paused, buffering)
-* current playable item 
+* player state (playing, paused and buffering)
+* current playable item (protocol Playable) 
 * duration
 * current time 
 * video aspect ratio 
@@ -47,7 +46,7 @@ The states of the **AVPLayer** client can subscribe to are following:
 * languages
 * availableLanguages 
 
-To subscribe the states of the **PlayerModel**, use the following method
+To subscribe to the states of the **PlayerModel**, use the following method
 ```
 struct YourView: View { 
     @Environment(\.playerModel) private var playerModel
@@ -63,14 +62,14 @@ struct YourView: View {
 ```
 
 ### PlayPreviewModel 
-**PlayerPreviewModel** is a global environemnt variable defined with name **playerPreviewModel**. It can be accessed as the same way to access the **playerModel** environment variable. 
+**PlayerPreviewModel** is a global environment variable defined with keypath name **playerPreviewModel**. It can be accessed as the same way to access the **playerModel** environment variable. 
 ```
 struct YourView: View { 
     @Environment(\.playerPreviewModel) private var playerPreviewModel
     ...
 }
 ```  
-It's a simplified *PlayerModel** which has a single responsibility to handle the seeking preview. Given an thumbnail sized video url, it will load the video into **AVPlayer** and allow UI to preview the seeking position of the video. Here is how to show the preview in your view. 
+It's a simplified **PlayerModel** which has a single responsibility to handle the seeking preview. Given an thumbnail sized video url, it will load the video into **AVPlayer** and allow UI to preview the seeking position of the video. Here is how to show the preview in your view. 
 ```
 struct YourView: View { 
     @State private var trackingState: TrackState = .idle
@@ -107,7 +106,7 @@ struct YourView: View {
     ```
 * onTimeChange: ((_ time: CMTime) -> Void)
 
-    This will be called every second while the playback is playing 
+    This will be called every second while the playback is playing. Client can use this callback closure to present contextual content or content proposal etc. 
 
 * onStateChange: ((_ state: PlayerState) -> Void)
 
@@ -142,28 +141,32 @@ struct YourView: View {
     @Environment(\.playerPreviewModel) private var playerPreviewModel
 
     var body: some View { 
-        Button(action: { 
-            Task { 
-                await playerModel.load(vod)
-                playerModel.presentation = .fullscreen(autoplay: true)
-                Task { 
-                    await playerPreviewModel.load(vod)  // vod is conform with Playable protocol which has a preview asset URL 
+        VStack {
+            Button(action: {
+                Task {
+                    await playerModel.load(vod)
+                    playerModel.presentation = .fullscreen(autoplay: true)
+                    Task {
+                        await playerPreviewModel.load(vod)
+                    }
                 }
-            }
-        }, label: { 
-            buttonImage 
-        })
+            }, label: {
+                AsyncImage(url: vod.poster?.landscapeUrl) { phase in
+                    phase.image?.resizable().aspectRatio(contentMode: .fit)
+                }
+                .frame(width: 200, height: 300)
+            })
+        }
         .systemPlayerFullScreenPresenter(prepare: { avPlayerViewController in
-            logger.debug("prepareCustomPlayerView: \(String(describing: avPlayerViewController))")
+            logger.info("prepareCustomPlayerView: \(String(describing: avPlayerViewController))")
 #if os(tvOS)
             setupAVPlayerViewController(avPlayerViewController)
 #endif
         }, onTimeChange: { time in
-            logger.debug("onTimeChange: \(String(describing: time))")
+            logger.info("onTimeChange: \(String(describing: time))")
         }, onStateChange: { state in
-            logger.debug("onStateChange: \(String(describing: state))")
+            logger.info("onStateChange: \(String(describing: state))")
         })
-    }
 }
 ```
 
@@ -173,14 +176,14 @@ struct YourView: View {
 CustomPlayerView(controls: { playerModel in
                 CustomControlsView(playerModel) 
             }, prepare: { playerLayer in
-                logger.debug("prepareCustomPlayerView: \(String(describing: playerLayer))")
+                logger.info("prepareCustomPlayerView: \(String(describing: playerLayer))")
             }, onTimeChange: { time in
-                logger.debug("onTimeChange: \(String(describing: time))")
+                logger.info("onTimeChange: \(String(describing: time))")
             }, onStateChange: { state in
-                logger.debug("onStateChange: \(String(describing: state))")
+                logger.info("onStateChange: \(String(describing: state))")
             })
 ```
-As you can it also has three callback closures. They are same as **SystemPlayerView** and **SystemPlayerPresenter** except that the **prepare** is passing with an **AVPlayerLayer** instead of the **AVPlayerViewController** 
+As you can see it also has three callback closures. They are same as **SystemPlayerView** and **SystemPlayerPresenter** except that the **prepare** is passing with an **AVPlayerLayer** instead of the **AVPlayerViewController** 
 
 ### CustomPlayerPresenter
 **CustomPlayerPresenter** is similar to the **SystemPlayerPresenter** instead presenting the **CustomPlayerView** in a full screen cover. Here is how to use it. 
@@ -190,28 +193,30 @@ struct YourView: View {
     @Environment(\.playerPreviewModel) private var playerPreviewModel
 
     var body: some View { 
-        Button(action: { 
-            Task { 
-                await playerModel.load(vod)
-                playerModel.presentation = .fullscreen(autoplay: true)
-                Task { 
-                    await playerPreviewModel.load(vod)  // vod is conform with Playable protocol which has a preview asset URL 
+        VStack {
+            Button(action: {
+                Task {
+                    await playerModel.load(vod)
+                    playerModel.presentation = .fullscreen(autoplay: true)
+                    Task {
+                        await playerPreviewModel.load(vod)
+                    }
                 }
-            }
-        }, label: { 
-            buttonImage 
-        })
-        .customPlayerFullScreenPresenter(controls: { playerModel in
-            CustomControlsView(playerModel)        // You can provide your own controls view here 
-        }, prepare: { avPlayerViewController in
-            logger.debug("prepareCustomPlayerView: \(String(describing: avPlayerViewController))")
-#if os(tvOS)
-            setupAVPlayerViewController(avPlayerViewController)
-#endif
+            }, label: {
+                AsyncImage(url: vod.poster?.landscapeUrl) { phase in
+                    phase.image?.resizable().aspectRatio(contentMode: .fit)
+                }
+                .frame(width: 200, height: 300)
+            })
+        }
+        .customPlayerFullScreenPresenter(controls: { _ in
+            CustomControlsView()        // You can provide your own controls view here 
+        }, prepare: { playerLayer in
+            logger.info("prepareCustomPlayerView: \(String(describing: playerLayer))")
         }, onTimeChange: { time in
-            logger.debug("onTimeChange: \(String(describing: time))")
+            logger.info("onTimeChange: \(String(describing: time))")
         }, onStateChange: { state in
-            logger.debug("onStateChange: \(String(describing: state))")
+            logger.info("onStateChange: \(String(describing: state))")
         })
     }
 }
@@ -219,12 +224,11 @@ struct YourView: View {
 ## Setup 
 **MPlayerKit** is in a Swift Package. 
 1. Clone this repository. 
-1. Copy the folder **MPlayerKit** into your XCoder project folder. 
-1. Go to your XCode project, Find the Package Dependencies tab in your Project. Click `+` to add the dependency 
-1. In the popup Swift Package Manager dialog, click `Add Local...` button and choose the `MPlayerKit` folder. 
-1. In your Xcode target, find the `General` tab, then find the `Frameworks, Libraries, and Embedded COntent` section, add the `MPlayerKit` if it's not there yet. 
+1. Copy the folder `MPlayerKit` into your XCoder project folder. 
+1. In your Xcode project, use `Add Local...` to add the **MPlayerKit** package. 
+1. Make sure `MPlayerKit` is in the `Frameworks, Libraries, and Embedded Content` section of your Xcode target, add the `MPlayerKit` if it's not there yet. 
 1. In your Xcode target, find the `Signing & Capabilities` tab, then make sure you checked the `Audio, AirPlay, and Picture in Picture` and `Background processing` in the `Background Modes` section 
-1. Import the `MPlayerKit` in your Swift file and enjoy your coding. :) 
+1. Import the `MPlayerKit` in your Swift code and enjoy your coding. :) 
 
 ## Demo 
 There is demo Xcode project in the respository. Here is some screenshots from the demo. 
@@ -244,3 +248,8 @@ There is demo Xcode project in the respository. Here is some screenshots from th
 
 ## License
 MIT license 
+
+## Support 
+If you find this project useful, please consider buying me a coffee ☕.
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/biz/profile/wyndot)

@@ -11,22 +11,54 @@ import os
 
 private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "SystemPlayerView")
 
-@MainActor
-public struct SystemPlayerView: UIViewControllerRepresentable {
+public struct SystemPlayerView: View {
     @Environment(\.playerModel) private var playerModel
+    let presentation: PlayerPresentation
     var prepare: ((_ controller: AVPlayerViewController) -> Void)?
     var onTimeChange: ((_ time: CMTime) -> Void)?
     var onStateChange: ((_ state: PlayerState) -> Void)?
-
-    public init(prepare: ((_: AVPlayerViewController) -> Void)? = nil,
+    
+    public init(presentation: PlayerPresentation = .inline(autoplay: true),
+                prepare: ((_: AVPlayerViewController) -> Void)? = nil,
                 onTimeChange: ((_: CMTime) -> Void)? = nil,
                 onStateChange: ((_: PlayerState) -> Void)? = nil) {
         self.prepare = prepare
         self.onTimeChange = onTimeChange
         self.onStateChange = onStateChange
+        self.presentation = presentation
     }
     
-    public func makeUIViewController(context: Context) -> AVPlayerViewController {
+    public var body: some View {
+        SystemPlayerRepresentableView(prepare: prepare)
+            .onReceive(playerModel.$currentTime, perform: { newValue in
+                guard let newValue else { return }
+                onTimeChange?(newValue)
+            })
+            .onReceive(playerModel.$state, perform: { newValue in
+                onStateChange?(newValue)
+            })
+            .onAppear {
+                logger.info("\(Self.self) onAppear")
+                playerModel.presentation = presentation
+                switch presentation {
+                    case .fullscreen(autoplay: let autoplay) where autoplay,
+                            .inline(autoplay: let autoplay) where autoplay :
+                        playerModel.play()
+                    default: break 
+                }
+            }
+            .onDisappear {
+                playerModel.pause()
+                logger.info("\(Self.self) onDisappear")
+            }
+    }
+}
+
+@MainActor
+private struct SystemPlayerRepresentableView: UIViewControllerRepresentable {
+    @Environment(\.playerModel) private var playerModel
+    var prepare: ((_ controller: AVPlayerViewController) -> Void)?
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
         let playerViewController = AVPlayerViewController()
         playerViewController.player = playerModel.player
         prepare?(playerViewController)
@@ -38,38 +70,26 @@ public struct SystemPlayerView: UIViewControllerRepresentable {
         return playerViewController
     }
     
-    public func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         logger.log("updateUIViewController")
     }
     
-    public func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(playerModel)
     }
     
     @MainActor
-    public class Coordinator: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
-        let parent: SystemPlayerView
-        var cancellables: Set<AnyCancellable> = []
-        
-        init(parent: SystemPlayerView) {
-            self.parent = parent
+    class Coordinator: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
+        private var playerModel: PlayerModel
+        init(_ playerModel: PlayerModel) {
+            self.playerModel = playerModel
             super.init()
-            parent.playerModel.$currentTime.sink(receiveValue: { time in
-                guard let time else { return }
-                parent.onTimeChange?(time)
-            }).store(in: &cancellables)
-            parent.playerModel.$state.sink(receiveValue: { state in
-                parent.onStateChange?(state)
-            }).store(in: &cancellables)
         }
         #if os(iOS)
-        public func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
-            logger.log("player will begin full screen presentation")
-        }
+        func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) { }
         
-        public func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
-            logger.log("player will end full screen presentation")
-            parent.playerModel.presentation = .inline
+        func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator) {
+            playerModel.presentation = .none
         }
         #endif
     }

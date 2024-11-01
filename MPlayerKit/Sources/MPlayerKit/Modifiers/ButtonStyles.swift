@@ -13,30 +13,18 @@ enum IconButtonSize {
     case medium
     case large
     
+    @MainActor
     func points() -> CGFloat {
-        #if os(iOS)
         switch self {
             case .xsmall:
-                30
+                deviceSpecificValue(phone: 30, pad: 40, tv: 60, default: 30)
             case .small:
-                40
+                deviceSpecificValue(phone: 40, pad: 50, tv: 80, default: 40)
             case .medium:
-                50
+                deviceSpecificValue(phone: 50, pad: 60, tv: 90, default: 50)
             case .large:
-                60
+                deviceSpecificValue(phone: 80, pad: 90, tv: 160, default: 60)
         }
-        #else
-        switch self {
-            case .xsmall:
-                60
-            case .small:
-                80
-            case .medium:
-                90
-            case .large:
-                160
-        }
-        #endif
     }
 }
 
@@ -118,34 +106,6 @@ extension ButtonStyle where Self == SquareButtonStyle {
 }
 
 
-struct RoundButtonStyle: ButtonStyle {
-#if os(tvOS)
-    @Environment(\.isFocused) private var isFocused
-#endif
-    let padding: CGFloat
-    
-    func makeBody(configuration: Configuration) -> some View {
-        ZStack {
-#if os(tvOS)
-            Circle().fill(isFocused ? Color.white : Color(red: 0.4, green: 0.4, blue: 0.4))
-#endif
-            configuration.label
-                .padding(padding)
-                .scaleEffect(configuration.isPressed ? 0.9 : 1)
-        }
-#if os(tvOS)
-        .scaleEffect(isFocused ? 1.3 : 1.0)
-#endif
-    }
-}
-
-extension ButtonStyle where Self == RoundButtonStyle {
-    static func round(padding: CGFloat) -> RoundButtonStyle {
-        RoundButtonStyle(padding: padding)
-    }
-}
-
-
 struct PiPButtonStyle: ButtonStyle {
 #if os(tvOS)
     @Environment(\.isFocused) private var isFocused
@@ -161,7 +121,7 @@ struct PiPButtonStyle: ButtonStyle {
             #if os(tvOS)
                 .foregroundStyle(isFocused ? Color.black : Color("AccentColor"))
             #else
-                .foregroundStyle(Color("AccentColor"))
+                .foregroundStyle(Color.accentColor)
             #endif
         }
         .cornerRadius(12)

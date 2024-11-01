@@ -14,7 +14,6 @@ private let logger = Logger(subsystem: "com.wyndot.MPlayerKit", category: "Syste
 public struct SystemPlayerFullScreenPresenter: ViewModifier {
     @Environment(\.playerModel) private var playerModel
     @State private var isPresented: Bool = false
-    @State private var autoplay: Bool = false
     var prepare: ((_ controller: AVPlayerViewController) -> Void)?
     var onTimeChange: ((CMTime) -> Void)?
     var onStateChange: ((_ state: PlayerState) -> Void)?
@@ -24,30 +23,17 @@ public struct SystemPlayerFullScreenPresenter: ViewModifier {
             .fullScreenCover(isPresented: $isPresented, onDismiss: {
                 playerModel.presentation = .none
             }) {
-                ZStack {
-                    Color.black.ignoresSafeArea(.all)
-                    
-                    SystemPlayerView(prepare: prepare,
-                                     onTimeChange: onTimeChange,
-                                     onStateChange: onStateChange)
-                        .ignoresSafeArea(.all)
-                        .onAppear {
-                            logger.debug("onStateChange: Stated")
-                            if autoplay { playerModel.play() }
-                        }
-                        .onDisappear {
-                            logger.debug("onStateChange: Ended")
-                            playerModel.pause()
-                        }
-                }
+                SystemPlayerView(presentation: playerModel.presentation,
+                                 prepare: prepare,
+                                 onTimeChange: onTimeChange,
+                                 onStateChange: onStateChange)
+                .ignoresSafeArea(.all)
             }
             .onReceive(playerModel.$presentation, perform: { newPresentation in
-                if case .fullscreen(let autoplay) = newPresentation {
-                    isPresented = true
-                    self.autoplay = autoplay
+                if case .fullscreen(_) = newPresentation {
+                    self.isPresented = true
                 } else {
                     isPresented = false
-                    self.autoplay = false
                 }
             })
     }

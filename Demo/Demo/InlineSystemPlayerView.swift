@@ -20,12 +20,12 @@ struct InlineSystemPlayerView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea(.all)
-            SystemPlayerView(prepare: { avPlayerController in
-                logger.debug("prepareCustomPlayerView: \(String(describing: avPlayerController))")
+            SystemPlayerView(presentation: .inline(autoplay: true), prepare: { avPlayerController in
+                logger.info("prepareCustomPlayerView: \(String(describing: avPlayerController))")
             }, onTimeChange: { time in
-                logger.debug("onTimeChange: \(String(describing: time))")
+                logger.info("onTimeChange: \(String(describing: time))")
             }, onStateChange: { state in
-                logger.debug("onStateChange: \(String(describing: state))")
+                logger.info("onStateChange: \(String(describing: state))")
             })
                 .ignoresSafeArea(.all)
                 .task {
@@ -33,14 +33,6 @@ struct InlineSystemPlayerView: View {
                     Task {
                         await playerPreviewModel.load(vod)
                     }
-                }
-                .onAppear {
-                    logger.debug("onStateChange: Started")
-                    playerModel.play()
-                }
-                .onDisappear {
-                    logger.debug("onStateChange: Ended")
-                    playerModel.pause()
                 }
         }
     }

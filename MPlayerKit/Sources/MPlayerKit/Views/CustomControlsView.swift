@@ -437,44 +437,28 @@ public struct CustomControlsView: View {
      * The spacing between the buttons in the top bar
      */
     var topBarSpacing: CGFloat {
-#if os(tvOS)
-        40
-#else
-        10
-#endif
+        deviceSpecificValue(phone: 10, pad: 20, tv: 40, default: 10)
     }
     
     /**
      * The spacing between the buttons in the middle bar
      */
     var middleBarSpacing: CGFloat {
-        #if os(tvOS)
-        120
-        #else
-        60
-        #endif
+        deviceSpecificValue(phone: 60, pad: 80, tv: 120, default: 60)
     }
     
     /**
      * The PiP button size
      */
     var pipButtonSize: CGFloat {
-#if os(tvOS)
-        82
-#else
-        45
-#endif
+        deviceSpecificValue(phone: 45, pad: 68, tv: 82, default: 45)
     }
     
     /**
      * The AirPlay button size
      */
     var airplayButtonSize: CGFloat {
-#if os(tvOS)
-        50
-#else
-        20
-#endif
+        deviceSpecificValue(phone: 20, pad: 20, tv: 50, default: 20)
     }
 }
 
